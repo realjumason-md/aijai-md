@@ -1,0 +1,1 @@
+- [Baileys runtime dependency](baileys-runtime-dependency.md) — when Baileys is bundled with the API service, externalized protobufjs must remain a direct runtime dependency.

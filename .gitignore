@@ -47,3 +47,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# WhatsApp multi-device credentials
+artifacts/api-server/session/*
+!artifacts/api-server/session/.gitkeep
