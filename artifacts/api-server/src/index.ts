@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { startWhatsAppBot } from "./bot/whatsapp";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,7 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  void startWhatsAppBot().catch((error: unknown) => {
+    logger.error({ err: error }, "WhatsApp bot failed to start");
+  });
 });
