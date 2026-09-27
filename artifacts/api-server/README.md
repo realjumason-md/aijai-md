@@ -27,8 +27,24 @@ Repository: <https://github.com/realjumason-md/aijai-md>
 | `viewonce` | `vv`, `viewmedia` | Reveal replied-to view-once media |
 | `owner` | `creator` | Show owner information |
 | `echo` | — | Repeat the supplied text |
+| `aion` | — | Turn on AI replies in the current chat |
+| `aioff` | — | Turn off AI replies in the current chat |
+| `aionall` | — | Turn on AI replies in all direct messages |
+| `aioffall` | — | Turn off AI replies in all direct messages |
 
 Examples: `.menu`, `!ping`, `/alive`, `£owner`, `🇺🇬echo hello`.
+
+### AI reply controls
+
+- `aion` enables replies in only the chat where it is sent.
+- `aioff` disables replies in only the chat where it is sent.
+- `aionall` enables replies in every direct message.
+- `aioffall` disables replies in every direct message.
+
+The latest command wins. Chat-specific `aion` and `aioff` settings override
+the global direct-message setting. Running either global command clears older
+chat-specific overrides so the global choice becomes authoritative. Settings
+are saved in `session/ai-settings.json`.
 
 ## Environment variables
 

@@ -8,6 +8,8 @@ import makeWASocket, {
 } from "@whiskeysockets/baileys";
 import pino from "pino";
 import { logger } from "../lib/logger";
+import { AiStateStore } from "./ai-state";
+import { generateAiReply, hasAiProvider } from "./ai";
 import { botConfig } from "./config";
 import {
   getImageMessage,
@@ -38,8 +40,10 @@ class WhatsAppBot {
   private connecting = false;
   private stopped = false;
   private pairingRequested = false;
+  private readonly aiState = new AiStateStore(botConfig.sessionDir);
 
   async start(): Promise<void> {
+    await this.aiState.load();
     await this.connect();
   }
 
@@ -169,6 +173,8 @@ class WhatsAppBot {
     if (!parsed) {
       if (imageMessage && botConfig.autoDescribeImages) {
         await this.handleImage(message, jid);
+      } else if (body.trim() && this.aiState.isEnabled(jid)) {
+        await this.handleAiReply(message, jid, body);
       }
       return;
     }
@@ -192,6 +198,7 @@ class WhatsAppBot {
       startedAt: Date.now(),
       config: botConfig,
       plugins,
+      aiState: this.aiState,
       reply: async (text: string) => {
         await this.socket?.sendMessage(jid, { text }, { quoted: message });
       },
@@ -205,6 +212,39 @@ class WhatsAppBot {
         "WhatsApp command failed",
       );
       await context.reply("Something went wrong while running that command.");
+    }
+  }
+
+  private async handleAiReply(
+    message: WAMessage,
+    jid: string,
+    body: string,
+  ): Promise<void> {
+    if (!hasAiProvider()) {
+      await this.socket?.sendMessage(
+        jid,
+        {
+          text: "AI replies are enabled, but no AI provider key is configured.",
+        },
+        { quoted: message },
+      );
+      return;
+    }
+
+    try {
+      const response = await generateAiReply(body);
+      await this.socket?.sendMessage(
+        jid,
+        { text: response },
+        { quoted: message },
+      );
+    } catch (error) {
+      logger.error({ err: error, jid }, "AI reply failed");
+      await this.socket?.sendMessage(
+        jid,
+        { text: "I could not generate an AI reply right now." },
+        { quoted: message },
+      );
     }
   }
 

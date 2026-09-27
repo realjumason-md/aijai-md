@@ -1,5 +1,6 @@
 import type { proto, WASocket, WAMessage } from "@whiskeysockets/baileys";
 import type { botConfig } from "./config";
+import type { AiStateStore } from "./ai-state";
 
 export type BotConfig = typeof botConfig;
 
@@ -17,6 +18,7 @@ export type CommandContext = {
   startedAt: number;
   config: BotConfig;
   plugins: readonly BotPlugin[];
+  aiState: AiStateStore;
   reply: (text: string) => Promise<void>;
 };
 
