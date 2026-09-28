@@ -1,17 +1,18 @@
 ##
-# Railway deployment configuration for the aijai-md WhatsApp bot.
-#
-# Railway installs the workspace dependencies from the root pnpm-lock.yaml,
-# then builds and runs the API service that starts the bot.
-##
+    # Railway deployment configuration for the aijai-md WhatsApp bot.
+    #
+    # Railway installs the workspace dependencies from the root pnpm-lock.yaml,
+    # then builds and runs the API service that starts the bot.
+    ##
 
-[build]
-builder = "railpack"
-buildCommand = "pnpm --filter @workspace/api-server run build"
+    [build]
+    builder = "railpack"
+    buildCommand = "pnpm --filter @workspace/api-server run build"
 
-[deploy]
-startCommand = "node artifacts/api-server/dist/index.mjs"
-healthcheckPath = "/api/healthz"
-healthcheckTimeout = 300
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 10
+    [deploy]
+    startCommand = "node artifacts/api-server/index.js"
+    healthcheckPath = "/api/healthz"
+    healthcheckTimeout = 300
+    restartPolicyType = "ON_FAILURE"
+    restartPolicyMaxRetries = 10
+    
