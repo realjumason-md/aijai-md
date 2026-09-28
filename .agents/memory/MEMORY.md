@@ -1,1 +1,2 @@
 - [Baileys runtime dependency](baileys-runtime-dependency.md) — when Baileys is bundled with the API service, externalized protobufjs must remain a direct runtime dependency.
+- [Bot runtime contract](bot-runtime-contract.md) — preserve MEGA-MD's shared helpers and auto-loaded plugin contract when extending aijai-md.
