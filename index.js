@@ -25,6 +25,7 @@ import { handleMessages, handleGroupParticipantUpdate, handleStatus, handleCall 
 import { aijaiState } from './lib/aijai-state.js';
 import commandHandler from './lib/commandHandler.js';
 import { DATA_DIR, SESSION_DIR, TEMP_DIR } from './lib/paths.js';
+const memoryRestartLimitMb = Number(process.env.MEMORY_RESTART_MB) || 0;
 store.readFromFile();
 setInterval(() => store.writeToFile(), config.storeWriteInterval || 10000);
 setInterval(() => {
@@ -34,9 +35,11 @@ setInterval(() => {
     }
 }, 60000);
 setInterval(() => {
+    if (memoryRestartLimitMb <= 0)
+        return;
     const used = process.memoryUsage().rss / 1024 / 1024;
-    if (used > 400) {
-        printLog('warning', 'RAM too high (>400MB), restarting bot...');
+    if (used > memoryRestartLimitMb) {
+        printLog('warning', `RAM too high (>${memoryRestartLimitMb}MB), restarting bot...`);
         process.exit(1);
     }
 }, 30000);
@@ -135,7 +138,7 @@ function ensureSessionDirectory() {
 }
 function hasValidSession() {
     try {
-        const credsPath = path.join(__dirname, 'session', 'creds.json');
+        const credsPath = path.join(SESSION_DIR, 'creds.json');
         if (!existsSync(credsPath))
             return false;
         const fileContent = fs.readFileSync(credsPath, 'utf8');

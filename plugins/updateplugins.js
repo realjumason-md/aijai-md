@@ -1,4 +1,5 @@
 import { updatePlugins } from '../lib/pluginUpdater.js';
+import commandHandler from '../lib/commandHandler.js';
 
 export default {
     command: 'updateplugins',
@@ -9,6 +10,8 @@ export default {
     usage: 'updateplugins [plugin-name ...]',
     async handler(sock, message, args, context) {
         const result = await updatePlugins(context.args);
+        if (result.changed.length)
+            await commandHandler.reloadCommands();
         await context.reply([
             `Plugin update finished: ${result.changed.length} updated.`,
             result.changed.length ? `Updated: ${result.changed.join(', ')}` : '',

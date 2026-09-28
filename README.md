@@ -18,6 +18,8 @@ BOT_STORAGE_DIR=/data
 
 The volume keeps the Baileys session, bot settings, message store, and JSON state across rebuilds and redeployments. Set `SESSION_ID` only when bootstrapping from an existing session; once the session is stored on the volume, later redeployments reuse it without a new pairing code.
 
+The bot does not watch source files in production. Use `.updateplugins` for live plugin-only changes; full source changes should be deployed normally. The Railway service is configured to restart automatically if the process exits, while the mounted volume keeps the WhatsApp session available to the new process.
+
 Required variables for a new connection:
 
 ```env
@@ -40,3 +42,8 @@ This downloads the current plugins from the configured GitHub branch, writes the
 ```
 
 The command is owner-only. `PLUGIN_REPO` and `PLUGIN_BRANCH` can override the default source.
+
+## Optional runtime settings
+
+- `MEMORY_RESTART_MB` enables an emergency self-restart threshold. It is disabled by default so normal plugin reloads do not take the bot offline.
+- `PLUGIN_WATCH=true` enables filesystem plugin watching in production. Leave it unset for stable deployments.
