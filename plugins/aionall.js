@@ -3,6 +3,7 @@ export default {
     aliases: [],
     category: 'ai',
     menuName: 'AI',
+    directMessageOnly: true,
     description: 'Turn on AI replies in all direct messages',
     usage: 'aionall',
     async handler(sock, message, args, context) {

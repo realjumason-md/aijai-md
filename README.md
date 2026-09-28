@@ -50,7 +50,9 @@ The command is owner-only. `PLUGIN_REPO` and `PLUGIN_BRANCH` can override the de
 
 ## AI commands
 
-Use `.ai <question>` for a direct AI request. `.aion` enables automatic AI replies in the chat where it is used, and `.aioff` disables them there. `.aionall` enables automatic AI replies for all direct messages, while `.aioffall` disables them globally. The latest AI setting command takes precedence: a global command clears older per-chat overrides, and a later per-chat command overrides the global setting for that chat.
+Use `.ai <question>` for a direct AI request. `.aion`, `.aioff`, `.aionall`, and `.aioffall` work only in one-to-one chats. `.aion` enables automatic AI replies in the current private chat, and `.aioff` disables them there. `.aionall` enables automatic AI replies for all direct messages, while `.aioffall` disables them globally. The latest private-chat setting command takes precedence: a global command clears older per-chat overrides, and a later per-chat command overrides the global setting for that chat.
+
+Groups use a separate admin-only command: `.chatbot on` enables automatic AI replies in that WhatsApp group, and `.chatbot off` disables them. The private-chat AI commands do not change group chatbot settings.
 
 Configure one supported provider in Railway:
 

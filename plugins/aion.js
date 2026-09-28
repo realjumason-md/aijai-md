@@ -3,6 +3,7 @@ export default {
     aliases: [],
     category: 'ai',
     menuName: 'AI',
+    directMessageOnly: true,
     description: 'Turn on AI replies in this chat',
     usage: 'aion',
     async handler(sock, message, args, context) {

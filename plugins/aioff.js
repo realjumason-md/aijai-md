@@ -3,6 +3,7 @@ export default {
     aliases: [],
     category: 'ai',
     menuName: 'AI',
+    directMessageOnly: true,
     description: 'Turn off AI replies in this chat',
     usage: 'aioff',
     async handler(sock, message, args, context) {

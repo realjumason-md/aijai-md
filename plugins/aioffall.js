@@ -3,6 +3,7 @@ export default {
     aliases: [],
     category: 'ai',
     menuName: 'AI',
+    directMessageOnly: true,
     description: 'Turn off AI replies in all direct messages',
     usage: 'aioffall',
     async handler(sock, message, args, context) {
