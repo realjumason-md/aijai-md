@@ -1,13 +1,9 @@
-FROM node:22-bookworm-slim
+FROM quay.io/qasimtech/mega-md:latest
 
-WORKDIR /app
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 make g++ \
-    && rm -rf /var/lib/apt/lists/*
+WORKDIR /root/aijai-md
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --no-audit --no-fund
+RUN npm ci --omit=dev --no-audit --no-fund --registry=https://registry.npmjs.org
 
 COPY . .
 
