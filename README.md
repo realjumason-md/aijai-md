@@ -50,7 +50,7 @@ The command is owner-only. `PLUGIN_REPO` and `PLUGIN_BRANCH` can override the de
 
 ## AI commands
 
-Use `.ai <question>` for a direct AI request. `.aion` and `.aioff` control automatic AI replies in the current chat, while `.aionall` and `.aioffall` control automatic replies for direct messages globally.
+Use `.ai <question>` for a direct AI request. `.aion` enables automatic AI replies in the chat where it is used, and `.aioff` disables them there. `.aionall` enables automatic AI replies for all direct messages, while `.aioffall` disables them globally. The latest AI setting command takes precedence: a global command clears older per-chat overrides, and a later per-chat command overrides the global setting for that chat.
 
 Configure one supported provider in Railway:
 
