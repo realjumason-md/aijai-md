@@ -214,9 +214,16 @@ async function startQasimDev() {
         ensureSessionDirectory();
         await delay(1000);
         const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
-        const _saveCreds = async () => {
-            ensureSessionDirectory();
-            await saveCreds();
+        let credsSavePromise = Promise.resolve();
+        const _saveCreds = () => {
+            const pendingSave = credsSavePromise
+                .catch(() => undefined)
+                .then(async () => {
+                ensureSessionDirectory();
+                await saveCreds();
+            });
+            credsSavePromise = pendingSave;
+            return pendingSave;
         };
         const msgRetryCounterCache = new NodeCache();
         const ghostMode = await store.getSetting('global', 'stealthMode');
@@ -469,7 +476,7 @@ async function startQasimDev() {
             }
         }
         QasimDev.ev.on('connection.update', async (s) => {
-            const { connection, lastDisconnect, qr } = s;
+            const { connection, lastDisconnect, qr, isNewLogin } = s;
             if (qr) {
                 if (!pairingCode) {
                     try {
@@ -479,6 +486,14 @@ async function startQasimDev() {
                         console.log('QR:', qr);
                     }
                 }
+            }
+            if (isNewLogin) {
+                updatePairingState({
+                    status: 'reconnecting',
+                    code: null,
+                    message: 'WhatsApp accepted the code. Finishing the login...'
+                });
+                printLog('success', 'WhatsApp accepted the pairing code; saving credentials and finishing login...');
             }
             if (connection === "open") {
                 updatePairingState({
@@ -525,17 +540,26 @@ async function startQasimDev() {
                 console.log();
             }
             if (connection === 'close') {
+                const statusCode = lastDisconnect?.error?.output?.statusCode;
+                const isRestartRequired = statusCode === DisconnectReason.restartRequired;
+                const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
                 registerPairingHandler(null);
                 updatePairingState({
-                    status: 'waiting',
+                    status: isRestartRequired ? 'reconnecting' : 'waiting',
                     code: null,
-                    message: 'WhatsApp disconnected. Waiting to reconnect...'
+                    message: isRestartRequired
+                        ? 'WhatsApp accepted the code. Finishing the login...'
+                        : `WhatsApp disconnected${statusCode ? ` (${statusCode})` : ''}. Waiting to reconnect...`
                 });
                 if (shuttingDown)
                     return;
-                const statusCode = lastDisconnect?.error?.output?.statusCode;
-                const shouldReconnect = statusCode !== DisconnectReason.loggedOut && statusCode !== 401;
-                if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
+                try {
+                    await credsSavePromise;
+                }
+                catch (error) {
+                    printLog('error', `Could not save WhatsApp credentials before reconnecting: ${error.message}`);
+                }
+                if (isLoggedOut) {
                     try {
                         rmSync(SESSION_DIR, { recursive: true, force: true });
                     }
@@ -544,7 +568,12 @@ async function startQasimDev() {
                     startQasimDev();
                     return;
                 }
-                if (shouldReconnect) {
+                if (isRestartRequired) {
+                    printLog('info', 'Restarting immediately to complete the new WhatsApp login...');
+                    startQasimDev();
+                    return;
+                }
+                if (statusCode !== DisconnectReason.loggedOut && statusCode !== 401) {
                     printLog('connection', 'Reconnecting in 5 seconds...');
                     await delay(5000);
                     startQasimDev();
