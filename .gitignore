@@ -51,3 +51,8 @@ Thumbs.db
 # WhatsApp multi-device credentials
 artifacts/api-server/session/*
 !artifacts/api-server/session/.gitkeep
+
+# Runtime state and locally compiled helper binaries
+artifacts/api-server/data/*.json
+!artifacts/api-server/data/.gitkeep
+artifacts/api-server/lib/bin/
