@@ -3,6 +3,7 @@ import commandHandler from './commandHandler.js';
 import { aijaiState } from './aijai-state.js';
 import { generateAiReply, hasAiProvider } from './aijai-ai.js';
 import { printLog } from './print.js';
+import isOwnerOrSudo from './isOwner.js';
 
 function getBody(message) {
     const content = message?.message;
@@ -103,6 +104,10 @@ export async function handleMessages(sock, chatUpdate) {
         reply: (replyText) => sock.sendMessage(jid, { text: replyText }, { quoted: message })
     };
     try {
+        if (parsed.plugin.ownerOnly && !(await isOwnerOrSudo(context.senderJid, sock, jid))) {
+            await context.reply('❌ This command is restricted to the bot owner.');
+            return;
+        }
         await parsed.plugin.handler(sock, message, ...parsed.args, context);
     }
     catch (error) {
@@ -112,5 +117,40 @@ export async function handleMessages(sock, chatUpdate) {
 }
 
 export async function handleGroupParticipantUpdate() {}
-export async function handleStatus() {}
-export async function handleCall() {}
+export async function handleStatus(sock, status) {
+    try {
+        const plugin = (await import('../plugins/autostatus.js')).default;
+        await plugin.handleStatusUpdate(sock, status);
+    }
+    catch (error) {
+        printLog('error', `Status handler error: ${error.message}`);
+    }
+}
+
+export async function handleCall(sock, calls) {
+    try {
+        const plugin = (await import('../plugins/anticall.js')).default;
+        if (!plugin.readState().enabled)
+            return;
+        const notified = new Set();
+        for (const call of calls || []) {
+            const callerJid = call.from || call.peerJid || call.chatId;
+            if (!callerJid)
+                continue;
+            if (typeof sock.rejectCall === 'function' && call.id)
+                await sock.rejectCall(call.id, callerJid).catch(() => {});
+            if (!notified.has(callerJid)) {
+                notified.add(callerJid);
+                await sock.sendMessage(callerJid, {
+                    text: '📵 Anticall is enabled. Your call was rejected and you will be blocked.'
+                }).catch(() => {});
+            }
+            setTimeout(() => {
+                Promise.resolve(sock.updateBlockStatus?.(callerJid, 'block')).catch(() => {});
+            }, 800);
+        }
+    }
+    catch (error) {
+        printLog('error', `Call handler error: ${error.message}`);
+    }
+}

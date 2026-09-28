@@ -11,6 +11,7 @@ handwritten command list. Do not import additional MEGA command plugins.
 **Why:** The previous partial TypeScript dispatcher only supported a small
 subset of commands and could not execute the full plugin library.
 
-**How to apply:** Add or modify only the commands already defined by aijai-md
-against the shared MEGA-style context and loader. Keep credentials and
+**How to apply:** Add or modify only the commands already defined by aijai-md,
+unless the user explicitly requests a specific additional feature. Port only
+that feature rather than copying the rest of MEGA-MD. Keep credentials and
 third-party API keys in environment variables, never in source files.

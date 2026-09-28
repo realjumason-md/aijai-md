@@ -73,3 +73,5 @@ The rebuilt runtime preserves these commands and aliases:
 - `viewonce` (`vv`, `viewmedia`)
 - `owner` (`creator`)
 - `echo`
+- `anticall` (`acall`, `callblock`)
+- `autostatus` (`autoview`, `statusview`) with `react on/off`
