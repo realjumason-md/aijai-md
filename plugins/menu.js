@@ -7,12 +7,22 @@ export default {
     description: 'Show all available commands',
     usage: 'menu',
     async handler(sock, message, args, context) {
-        const lines = [...commandHandler.commands.values()].map((plugin) => {
-            const aliases = plugin.aliases?.length ? ` (${plugin.aliases.join(', ')})` : '';
-            return `• ${context.prefix}${plugin.command}${aliases}\n  ${plugin.description || ''}`;
-        });
+        const titleCase = (value) => value
+            .replace(/[-_]+/g, ' ')
+            .replace(/\b\w/g, (letter) => letter.toUpperCase());
+        const labels = new Set();
+        const lines = [...commandHandler.commands.values()]
+            .sort((left, right) => left.command.localeCompare(right.command))
+            .map((plugin) => plugin.menuName || titleCase(plugin.command))
+            .filter((label) => {
+                if (labels.has(label))
+                    return false;
+                labels.add(label);
+                return true;
+            })
+            .map((label) => `• ${label}`);
         await context.reply(
-            `╭─〔 ${context.config.botName} 〕\n│ Commands\n╰────────────\n\n${lines.join('\n\n')}\n\nUse ${context.prefix}command to run one.`
+            `╭─〔 ${context.config.botName} 〕\n│ Commands\n╰────────────\n\n${lines.join('\n')}\n\nUse ${context.prefix}command to run one.`
         );
     }
 };

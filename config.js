@@ -19,6 +19,8 @@ const config = {
     prefix: _prefixes[0],
     commandMode: process.env.COMMAND_MODE || 'public',
     timeZone: process.env.TIMEZONE || 'Africa/Kampala',
+    aiProvider: process.env.AI_PROVIDER || process.env.VISION_PROVIDER || 'auto',
+    aiModel: process.env.AI_MODEL || process.env.VISION_MODEL || '',
     visionProvider: process.env.VISION_PROVIDER || 'auto',
     visionModel: process.env.VISION_MODEL || '',
     // Links

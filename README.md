@@ -47,3 +47,16 @@ The command is owner-only. `PLUGIN_REPO` and `PLUGIN_BRANCH` can override the de
 
 - `MEMORY_RESTART_MB` enables an emergency self-restart threshold. It is disabled by default so normal plugin reloads do not take the bot offline.
 - `PLUGIN_WATCH=true` enables filesystem plugin watching in production. Leave it unset for stable deployments.
+
+## AI commands
+
+Use `.ai <question>` for a direct AI request. `.aion` and `.aioff` control automatic AI replies in the current chat, while `.aionall` and `.aioffall` control automatic replies for direct messages globally.
+
+Configure one supported provider in Railway:
+
+```env
+AI_PROVIDER=groq
+GROQ_API_KEY=...
+```
+
+Supported providers are `groq`, `gemini`, `openai`, and `xai`. `AI_MODEL` is optional and overrides the provider default.

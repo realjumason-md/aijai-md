@@ -2,6 +2,7 @@ export default {
     command: 'aion',
     aliases: [],
     category: 'ai',
+    menuName: 'AI',
     description: 'Turn on AI replies in this chat',
     usage: 'aion',
     async handler(sock, message, args, context) {
