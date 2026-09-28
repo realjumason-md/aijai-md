@@ -9,8 +9,9 @@ handling, permission checks, and Railway-compatible health checks.
 - `index.js` starts the HTTP server and WhatsApp connection.
 - `lib/` contains the shared connection, message, storage, and permission
   helpers.
-- `plugins/` contains the complete command library. Every `.js` file is loaded
-  automatically at startup; new commands do not need a central registry entry.
+- `plugins/` contains only the command library that originally shipped with
+  `aijai-md`. Every `.js` file is loaded automatically at startup; new
+  commands do not need a central registry entry.
 - `data/` stores JSON-backed runtime state when no external database is set.
 - `session/` stores the multi-file WhatsApp session and must persist between
   deploys.
@@ -60,3 +61,15 @@ pnpm --filter @workspace/api-server run dev
 ```
 
 The build command runs `node --check` across the runtime and all plugins.
+
+## Original command set
+
+The rebuilt runtime preserves these commands and aliases:
+
+- `menu` (`list`, `help`, `h`, `commands`)
+- `aion`, `aioff`, `aionall`, `aioffall`
+- `alive` (`status`, `bot`)
+- `ping` (`p`, `pong`)
+- `viewonce` (`vv`, `viewmedia`)
+- `owner` (`creator`)
+- `echo`

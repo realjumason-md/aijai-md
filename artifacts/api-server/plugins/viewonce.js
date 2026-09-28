@@ -1,49 +1,47 @@
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
+
+async function toBuffer(stream) {
+    const chunks = [];
+    for await (const chunk of stream)
+        chunks.push(Buffer.from(chunk));
+    return Buffer.concat(chunks);
+}
+
+function getQuotedViewOnceMessage(message) {
+    const quoted = message?.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    const viewOnce = quoted?.viewOnceMessage?.message
+        || quoted?.viewOnceMessageV2?.message
+        || quoted?.viewOnceMessageV2Extension?.message;
+    if (viewOnce?.imageMessage)
+        return { kind: 'image', message: viewOnce.imageMessage };
+    if (viewOnce?.videoMessage)
+        return { kind: 'video', message: viewOnce.videoMessage };
+    return undefined;
+}
+
 export default {
     command: 'viewonce',
-    aliases: ['viewmedia', 'vv'],
-    category: 'general',
-    description: 'Re-send a view-once image or video.',
-    usage: '.viewonce (reply to a view-once media)',
-    async handler(sock, message, args, context) {
-        const chatId = context.chatId || message.key.remoteJid;
-        try {
-            const quoted = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-            const quotedImage = quoted?.imageMessage;
-            const quotedVideo = quoted?.videoMessage;
-            if (quotedImage && quotedImage.viewOnce) {
-                const stream = await downloadContentFromMessage(quotedImage, 'image');
-                let buffer = Buffer.from([]);
-                for await (const chunk of stream)
-                    buffer = Buffer.concat([buffer, chunk]);
-                await sock.sendMessage(chatId, {
-                    image: buffer,
-                    fileName: 'media.jpg',
-                    caption: quotedImage.caption || ''
-                }, { quoted: message });
-            }
-            else if (quotedVideo && quotedVideo.viewOnce) {
-                const stream = await downloadContentFromMessage(quotedVideo, 'video');
-                let buffer = Buffer.from([]);
-                for await (const chunk of stream)
-                    buffer = Buffer.concat([buffer, chunk]);
-                await sock.sendMessage(chatId, {
-                    video: buffer,
-                    fileName: 'media.mp4',
-                    caption: quotedVideo.caption || ''
-                }, { quoted: message });
-            }
-            else {
-                await sock.sendMessage(chatId, {
-                    text: '*Please reply to a view-once image or video.*'
-                }, { quoted: message });
-            }
+    aliases: ['vv', 'viewmedia'],
+    category: 'media',
+    description: 'Reveal a replied-to view-once image or video',
+    usage: 'viewonce (reply to view-once media)',
+    async handler(sock, message, ...args) {
+        const context = args.at(-1);
+        const media = getQuotedViewOnceMessage(message);
+        if (!media) {
+            await context.reply(`Reply to a view-once image or video with ${context.prefix}viewonce.`);
+            return;
         }
-        catch (error) {
-            console.error('Error in viewonceCommand:', error);
-            await sock.sendMessage(chatId, {
-                text: '❌ Failed to retrieve the view-once media. Please try again later.'
-            }, { quoted: message });
+        const stream = await downloadContentFromMessage(media.message, media.kind);
+        const buffer = await toBuffer(stream);
+        if (media.kind === 'image') {
+            await sock.sendMessage(context.jid, { image: buffer, caption: 'View-once media revealed.' }, { quoted: message });
+            return;
         }
+        await sock.sendMessage(
+            context.jid,
+            { video: buffer, mimetype: media.message.mimetype || 'video/mp4', caption: 'View-once media revealed.' },
+            { quoted: message }
+        );
     }
 };

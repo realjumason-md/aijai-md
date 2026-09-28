@@ -22,6 +22,7 @@ import { server, PORT } from './lib/server.js';
 import { printLog } from './lib/print.js';
 import { writeErrorLog } from './lib/logger.js';
 import { handleMessages, handleGroupParticipantUpdate, handleStatus, handleCall } from './lib/messageHandler.js';
+import { aijaiState } from './lib/aijai-state.js';
 import commandHandler from './lib/commandHandler.js';
 store.readFromFile();
 setInterval(() => store.writeToFile(), config.storeWriteInterval || 10000);
@@ -514,6 +515,7 @@ async function startQasimDev() {
     }
 }
 async function main() {
+    await aijaiState.load();
     await compileAll();
     await commandHandler.loadCommands();
     printLog('info', 'Starting MEGA MD BOT...');

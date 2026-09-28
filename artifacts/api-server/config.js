@@ -8,6 +8,7 @@ const config = {
     // Bot Identity
     botName: process.env.BOT_NAME || 'aijai-md',
     botOwner: process.env.BOT_OWNER || process.env.OWNER_NAME || 'Ali Jaiton',
+    ownerName: process.env.OWNER_NAME || process.env.BOT_OWNER || 'Ali Jaiton',
     ownerNumber: process.env.OWNER_NUMBER || '256706106326',
     author: process.env.AUTHOR || 'aijai-md',
     packname: process.env.PACKNAME || 'aijai-md',
@@ -18,6 +19,8 @@ const config = {
     prefix: _prefixes[0],
     commandMode: process.env.COMMAND_MODE || 'public',
     timeZone: process.env.TIMEZONE || 'Africa/Kampala',
+    visionProvider: process.env.VISION_PROVIDER || 'auto',
+    visionModel: process.env.VISION_MODEL || '',
     // Links
     channelLink: process.env.CHANNEL_LINK || '',
     updateZipUrl: process.env.UPDATE_URL || 'https://github.com/realjumason-md/aijai-md/archive/refs/heads/main.zip',
