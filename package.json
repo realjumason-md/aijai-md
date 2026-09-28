@@ -1,23 +1,52 @@
 {
-  "name": "workspace",
-  "version": "0.0.0",
-  "license": "MIT",
-  "packageManager": "pnpm@10.26.1",
+  "name": "aijai-md",
+  "version": "1.0.0",
+  "private": false,
+  "type": "module",
   "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "build": "pnpm run typecheck && pnpm -r --if-present run build",
-    "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "start": "node --enable-source-maps index.js",
+    "start:optimized": "node --max-old-space-size=512 --optimize-for-size --gc-interval=100 index.js",
+    "build": "for f in index.js config.js lib/*.js plugins/*.js; do node --check \"$f\"; done",
+    "dev": "NODE_ENV=development node index.js",
+    "lint": "eslint . --ext .js"
   },
-  "private": true,
   "dependencies": {
-    "@replit/connectors-sdk": "^0.4.3"
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "acrcloud": "^1.4.0",
+    "awesome-phonenumber": "^5.9.0",
+    "axios": "^1.8.4",
+    "better-sqlite3": "^12.5.0",
+    "chalk": "^5.6.2",
+    "cheerio": "^1.2.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.22.1",
+    "file-type": "^21.3.4",
+    "form-data": "^4.0.1",
+    "gspeak": "^0.0.3",
+    "human-readable": "^0.2.1",
+    "libphonenumber-js": "^1.11.18",
+    "megajs": "^1.3.9",
+    "moment-timezone": "^0.5.43",
+    "mongoose": "^9.0.2",
+    "mumaker": "^2.0.0",
+    "mysql2": "^3.16.0",
+    "node-cache": "^5.1.2",
+    "node-webpmux": "^3.1.0",
+    "pg": "^8.16.3",
+    "pino": "^9.14.0",
+    "protobufjs": "^7.6.6",
+    "qrcode": "^1.5.4",
+    "ruhend-scraper": "*",
+    "sharp": "^0.35.3",
+    "simple-git": "^3.30.0",
+    "stickers-formatter": "^1.0.0",
+    "syntax-error": "^1.4.0",
+    "yt-search": "^2.12.1"
   },
-  "devDependencies": {
-    "prettier": "^3.9.6",
-    "typescript": "~5.9.3"
+  "overrides": {
+    "minimatch": "^10.2.1",
+    "yargs-parser": "^21.1.1"
   },
-  "engines": {
-    "node": ">=20.0.0"
-  }
+  "main": "index.js"
 }
