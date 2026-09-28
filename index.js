@@ -16,7 +16,7 @@ import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaile
 import NodeCache from 'node-cache';
 import pino from 'pino';
 import config from './config.js';
-import store from './lib/lightweight_store.js';
+import store, { gracefulShutdown as shutdownStore } from './lib/lightweight_store.js';
 import SaveCreds from './lib/session.js';
 import { server, PORT } from './lib/server.js';
 import { printLog } from './lib/print.js';
@@ -24,6 +24,7 @@ import { writeErrorLog } from './lib/logger.js';
 import { handleMessages, handleGroupParticipantUpdate, handleStatus, handleCall } from './lib/messageHandler.js';
 import { aijaiState } from './lib/aijai-state.js';
 import commandHandler from './lib/commandHandler.js';
+import { DATA_DIR, SESSION_DIR, TEMP_DIR } from './lib/paths.js';
 store.readFromFile();
 setInterval(() => store.writeToFile(), config.storeWriteInterval || 10000);
 setInterval(() => {
@@ -62,15 +63,15 @@ const DATA_DEFAULTS = {
     'antilink.json': {},
     'antibadword.json': {},
 };
-fs.mkdirSync('./data', { recursive: true });
+fs.mkdirSync(DATA_DIR, { recursive: true });
 for (const [file, def] of Object.entries(DATA_DEFAULTS)) {
-    const fp = `./data/${file}`;
+    const fp = path.join(DATA_DIR, file);
     if (!fs.existsSync(fp))
         fs.writeFileSync(fp, JSON.stringify(def, null, 2));
 }
 let owner = [];
 try {
-    owner = JSON.parse(fs.readFileSync('./data/owner.json', 'utf-8'));
+    owner = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'owner.json'), 'utf-8'));
 }
 catch {
     owner = [];
@@ -81,6 +82,8 @@ const pairingCode = !process.argv.includes("--qr-code");
 const useMobile = process.argv.includes("--mobile");
 let rl = null;
 let rlClosed = false;
+let activeSocket = null;
+let shuttingDown = false;
 if (process.stdin.isTTY && !config.pairingNumber) {
     rl = readline.createInterface({
         input: process.stdin,
@@ -100,13 +103,31 @@ process.on('exit', () => {
     if (rl && !rlClosed)
         rl.close();
 });
-process.on('SIGINT', () => {
+const shutdown = async (signal) => {
+    if (shuttingDown)
+        return;
+    shuttingDown = true;
+    printLog('info', `Received ${signal}; saving session and state before shutdown...`);
     if (rl && !rlClosed)
         rl.close();
-    process.exit(0);
-});
+    try {
+        if (activeSocket?.ws?.close)
+            activeSocket.ws.close();
+        await aijaiState.persist();
+        await store.writeToFile();
+        await shutdownStore(signal);
+    }
+    catch (error) {
+        printLog('error', `Shutdown save failed: ${error.message}`);
+    }
+    finally {
+        process.exit(0);
+    }
+};
+process.on('SIGINT', () => void shutdown('SIGINT'));
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
 function ensureSessionDirectory() {
-    const sessionPath = path.join(__dirname, 'session');
+    const sessionPath = SESSION_DIR;
     if (!existsSync(sessionPath)) {
         mkdirSync(sessionPath, { recursive: true });
     }
@@ -131,7 +152,7 @@ function hasValidSession() {
             if (creds.registered === false) {
                 printLog('warning', 'Session not registered. Clearing for fresh pairing...');
                 try {
-                    rmSync(path.join(__dirname, 'session'), { recursive: true, force: true });
+                    rmSync(SESSION_DIR, { recursive: true, force: true });
                 }
                 catch (_e) { /* ignore */ }
                 return false;
@@ -183,11 +204,13 @@ server.listen(PORT, () => {
     printLog('success', `Server listening on port ${PORT}`);
 });
 async function startQasimDev() {
+    if (shuttingDown)
+        return;
     try {
         const { version } = await fetchLatestBaileysVersion();
         ensureSessionDirectory();
         await delay(1000);
-        const { state, saveCreds } = await useMultiFileAuthState(`./session`);
+        const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
         const _saveCreds = async () => {
             ensureSessionDirectory();
             await saveCreds();
@@ -216,6 +239,7 @@ async function startQasimDev() {
             connectTimeoutMs: 60000,
             keepAliveIntervalMs: 10000,
         });
+        activeSocket = QasimDev;
         QasimDev.store = store;
         const originalSendPresenceUpdate = QasimDev.sendPresenceUpdate;
         const originalReadMessages = QasimDev.readMessages;
@@ -385,7 +409,7 @@ async function startQasimDev() {
                 catch (error) {
                     if (attempt < 3) {
                         try {
-                            rmSync('./session', { recursive: true, force: true });
+                            rmSync(SESSION_DIR, { recursive: true, force: true });
                         }
                         catch (_e) { /* ignore */ }
                         await delay(3000);
@@ -460,7 +484,7 @@ async function startQasimDev() {
                 }
                 await delay(1999);
                 try {
-                    owner = JSON.parse(fs.readFileSync('./data/owner.json', 'utf-8'));
+                    owner = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'owner.json'), 'utf-8'));
                 }
                 catch (_e) { }
                 printLog('info', `[ ${config.botName || 'MEGA-MD'} ]`);
@@ -472,11 +496,13 @@ async function startQasimDev() {
                 console.log();
             }
             if (connection === 'close') {
+                if (shuttingDown)
+                    return;
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
                 const shouldReconnect = statusCode !== DisconnectReason.loggedOut && statusCode !== 401;
                 if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
                     try {
-                        rmSync('./session', { recursive: true, force: true });
+                        rmSync(SESSION_DIR, { recursive: true, force: true });
                     }
                     catch (_e) { /* ignore */ }
                     await delay(3000);
@@ -530,7 +556,7 @@ async function main() {
 }
 main();
 // Session cleanup interval
-const sessionDir = path.join(process.cwd(), 'session');
+const sessionDir = SESSION_DIR;
 setInterval(() => {
     if (!fs.existsSync(sessionDir))
         return;
@@ -547,7 +573,7 @@ setInterval(() => {
     });
 }, 3 * 60 * 1000);
 // Temp folder setup
-const customTemp = path.join(process.cwd(), 'temp');
+const customTemp = TEMP_DIR;
 if (!fs.existsSync(customTemp))
     fs.mkdirSync(customTemp, { recursive: true });
 process.env.TMPDIR = customTemp;

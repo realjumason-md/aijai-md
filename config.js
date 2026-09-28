@@ -24,6 +24,8 @@ const config = {
     // Links
     channelLink: process.env.CHANNEL_LINK || '',
     updateZipUrl: process.env.UPDATE_URL || 'https://github.com/realjumason-md/aijai-md/archive/refs/heads/main.zip',
+    pluginRepo: process.env.PLUGIN_REPO || 'realjumason-md/aijai-md',
+    pluginBranch: process.env.PLUGIN_BRANCH || 'main',
     ytChannel: process.env.YT_CHANNEL || '',
     // Session
     sessionId: process.env.SESSION_ID || '',
