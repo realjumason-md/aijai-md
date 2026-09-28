@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'node:path';
 import { dataFile } from '../lib/paths.js';
 
 const configPath = dataFile('autoStatus.json');
@@ -27,7 +28,7 @@ function readConfig() {
 }
 
 function writeConfig(config) {
-    fs.mkdirSync('data', { recursive: true });
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
     fs.writeFileSync(configPath, JSON.stringify({
         enabled: config.enabled === true,
         reactOn: config.reactOn === true
@@ -91,8 +92,7 @@ export default {
     description: 'Automatically view and react to WhatsApp statuses',
     usage: 'autostatus <on|off|react on|react off>',
     ownerOnly: true,
-    async handler(sock, message, ...args) {
-        const context = args.at(-1);
+    async handler(sock, message, args, context) {
         const config = readConfig();
         const subcommand = context.args[0]?.toLowerCase();
         const action = context.args[1]?.toLowerCase();

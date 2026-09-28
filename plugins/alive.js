@@ -12,8 +12,7 @@ export default {
     category: 'general',
     description: 'Show that the bot is online and its uptime',
     usage: 'alive',
-    async handler(sock, message, ...args) {
-        const context = args.at(-1);
+    async handler(sock, message, args, context) {
         await context.reply(
             `╭─〔 ${context.config.botName} 〕\n│ Online: yes\n│ Uptime: ${formatUptime(process.uptime())}\n╰────────────`
         );

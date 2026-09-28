@@ -25,8 +25,7 @@ export default {
     category: 'media',
     description: 'Reveal a replied-to view-once image or video',
     usage: 'viewonce (reply to view-once media)',
-    async handler(sock, message, ...args) {
-        const context = args.at(-1);
+    async handler(sock, message, args, context) {
         const media = getQuotedViewOnceMessage(message);
         if (!media) {
             await context.reply(`Reply to a view-once image or video with ${context.prefix}viewonce.`);

@@ -6,8 +6,7 @@ export default {
     category: 'general',
     description: 'Show all available commands',
     usage: 'menu',
-    async handler(sock, message, ...args) {
-        const context = args.at(-1);
+    async handler(sock, message, args, context) {
         const lines = [...commandHandler.commands.values()].map((plugin) => {
             const aliases = plugin.aliases?.length ? ` (${plugin.aliases.join(', ')})` : '';
             return `• ${context.prefix}${plugin.command}${aliases}\n  ${plugin.description || ''}`;

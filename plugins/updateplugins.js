@@ -7,8 +7,7 @@ export default {
     ownerOnly: true,
     description: 'Update plugins from the configured GitHub repository without restarting',
     usage: 'updateplugins [plugin-name ...]',
-    async handler(sock, message, ...args) {
-        const context = args.at(-1);
+    async handler(sock, message, args, context) {
         const result = await updatePlugins(context.args);
         await context.reply([
             `Plugin update finished: ${result.changed.length} updated.`,

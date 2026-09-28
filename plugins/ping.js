@@ -4,8 +4,8 @@ export default {
     category: 'general',
     description: 'Check response speed',
     usage: 'ping',
-    async handler(sock, message, ...args) {
-        const context = args.at(-1);
+    isPrefixless: true,
+    async handler(sock, message, args, context) {
         const latency = Math.max(0, Date.now() - context.receivedAt);
         await context.reply(`Pong! ${latency} ms`);
     }

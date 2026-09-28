@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'node:path';
 import { dataFile } from '../lib/paths.js';
 
 const statePath = dataFile('anticall.json');
@@ -16,7 +17,7 @@ function readState() {
 }
 
 function writeState(enabled) {
-    fs.mkdirSync('data', { recursive: true });
+    fs.mkdirSync(path.dirname(statePath), { recursive: true });
     fs.writeFileSync(statePath, JSON.stringify({ enabled: !!enabled }, null, 2));
 }
 
@@ -27,8 +28,7 @@ export default {
     description: 'Enable or disable auto-blocking of incoming calls',
     usage: 'anticall <on|off|status>',
     ownerOnly: true,
-    async handler(sock, message, ...args) {
-        const context = args.at(-1);
+    async handler(sock, message, args, context) {
         const state = readState();
         const subcommand = context.args.join(' ').trim().toLowerCase();
         if (!['on', 'off', 'status'].includes(subcommand)) {
