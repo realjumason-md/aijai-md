@@ -6,7 +6,7 @@ export default {
     usage: 'owner',
     async handler(sock, message, args, context) {
         await context.reply(
-            `╭─〔 Owner 〕\n│ Name: ${context.config.ownerName}\n│ Number: +${context.config.ownerNumber}\n│ WhatsApp: https://wa.me/${context.config.ownerNumber}\n╰────────────`
+            `╭─〔 Owner 〕\n│ Name: ${context.config.ownerName}\n│ Number: +${context.config.ownerNumber}\n╰────────────`
         );
     }
 };

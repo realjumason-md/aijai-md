@@ -3,17 +3,6 @@ import path from 'node:path';
 import { dataFile } from '../lib/paths.js';
 
 const configPath = dataFile('autoStatus.json');
-const channelInfo = {
-    contextInfo: {
-        forwardingScore: 1,
-        isForwarded: true,
-        forwardedNewsletterMessageInfo: {
-            newsletterJid: '120363319098372999@newsletter',
-            newsletterName: 'GlobalTechInc',
-            serverMessageId: -1
-        }
-    }
-};
 
 function readConfig() {
     try {
@@ -104,7 +93,6 @@ export default {
                     `• ${context.prefix}autostatus off - Disable auto view\n` +
                     `• ${context.prefix}autostatus react on - Enable reaction\n` +
                     `• ${context.prefix}autostatus react off - Disable reaction`,
-                ...channelInfo
             }, { quoted: message });
             return;
         }
@@ -115,7 +103,6 @@ export default {
                 text: config.enabled
                     ? '✅ *Auto status view enabled!*\n\nBot will now automatically view all contact statuses.'
                     : '❌ *Auto status view disabled!*\n\nBot will no longer automatically view statuses.',
-                ...channelInfo
             }, { quoted: message });
             return;
         }
@@ -126,7 +113,6 @@ export default {
                 text: config.reactOn
                     ? '💫 *Status reactions enabled!*\n\nBot will now react to status updates with 💚'
                     : '❌ *Status reactions disabled!*\n\nBot will no longer react to status updates.',
-                ...channelInfo
             }, { quoted: message });
             return;
         }

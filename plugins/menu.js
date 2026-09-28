@@ -10,17 +10,16 @@ export default {
         const titleCase = (value) => value
             .replace(/[-_]+/g, ' ')
             .replace(/\b\w/g, (letter) => letter.toUpperCase());
-        const labels = new Set();
         const lines = [...commandHandler.commands.values()]
             .sort((left, right) => left.command.localeCompare(right.command))
-            .map((plugin) => plugin.menuName || titleCase(plugin.command))
-            .filter((label) => {
-                if (labels.has(label))
-                    return false;
-                labels.add(label);
-                return true;
-            })
-            .map((label) => `• ${label}`);
+            .map((plugin) => {
+                const label = plugin.menuName && plugin.menuName !== 'AI'
+                    ? plugin.menuName
+                    : titleCase(plugin.command);
+                const description = plugin.description ? ` — ${plugin.description}` : '';
+                const aliases = plugin.aliases?.length ? ` (aliases: ${plugin.aliases.join(', ')})` : '';
+                return `• ${context.prefix}${plugin.command} — ${label}${aliases}${description}`;
+            });
         await context.reply(
             `╭─〔 ${context.config.botName} 〕\n│ Commands\n╰────────────\n\n${lines.join('\n')}\n\nUse ${context.prefix}command to run one.`
         );

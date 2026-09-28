@@ -315,16 +315,7 @@ async function startQasimDev() {
                     printLog('error', `Error in handleMessages: ${err.message}`);
                     if (mek.key && mek.key.remoteJid) {
                         await QasimDev.sendMessage(mek.key.remoteJid, {
-                            text: '❌ An error occurred while processing your message.',
-                            contextInfo: {
-                                forwardingScore: 1,
-                                isForwarded: true,
-                                forwardedNewsletterMessageInfo: {
-                                    newsletterJid: '120363319098372999@newsletter',
-                                    newsletterName: 'GlobalTechInc',
-                                    serverMessageId: -1
-                                }
-                            }
+                            text: '❌ An error occurred while processing your message.'
                         }).catch(console.error);
                     }
                 }
@@ -470,16 +461,7 @@ async function startQasimDev() {
                     const botNumber = `${QasimDev.user.id.split(':')[0] }@s.whatsapp.net`;
                     const ghostStatus = (ghostMode && ghostMode.enabled) ? '\n👻 Stealth Mode: ACTIVE' : '';
                     await QasimDev.sendMessage(botNumber, {
-                        text: `🤖 Bot Connected Successfully!\n\n⏰ Time: ${new Date().toLocaleString()}\n✅ Status: Online and Ready!${ghostStatus}\n\n✅Make sure to join below channel`,
-                        contextInfo: {
-                            forwardingScore: 1,
-                            isForwarded: true,
-                            forwardedNewsletterMessageInfo: {
-                                newsletterJid: '120363319098372999@newsletter',
-                                newsletterName: 'GlobalTechInc',
-                                serverMessageId: -1
-                            }
-                        }
+                        text: `🤖 Bot Connected Successfully!\n\n⏰ Time: ${new Date().toLocaleString()}\n✅ Status: Online and Ready!${ghostStatus}`
                     });
                 }
                 catch (error) {

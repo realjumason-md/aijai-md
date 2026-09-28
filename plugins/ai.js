@@ -14,7 +14,7 @@ export default {
             return;
         }
         if (!hasAiProvider()) {
-            await context.reply('AI is not configured. Set AI_PROVIDER and its matching API key first.');
+            await context.reply(`AI is switched off. Use ${context.prefix}aiswitch auto, ${context.prefix}aiswitch ollama, or ${context.prefix}aiswitch duckduckgo.`);
             return;
         }
         const reply = await generateAiReply(prompt);

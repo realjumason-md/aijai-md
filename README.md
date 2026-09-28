@@ -52,6 +52,13 @@ The command is owner-only. `PLUGIN_REPO` and `PLUGIN_BRANCH` can override the de
 
 Use `.ai <question>` for a direct AI request. `.aion`, `.aioff`, `.aionall`, and `.aioffall` work only in one-to-one chats. `.aion` enables automatic AI replies in the current private chat, and `.aioff` disables them there. `.aionall` enables automatic AI replies for all direct messages, while `.aioffall` disables them globally. The latest private-chat setting command takes precedence: a global command clears older per-chat overrides, and a later per-chat command overrides the global setting for that chat.
 
+`.aiswitch <provider>` changes the active provider and saves the choice. `.aikey` shows provider readiness without revealing any secret. Keyless options are:
+
+- `ollama` — uses an Ollama server you run locally or at `OLLAMA_BASE_URL`; no API key is required.
+- `duckduckgo` — performs a keyless DuckDuckGo lookup. It is a search/answer source, not a generative chat model.
+
+`auto` prefers configured key-based providers, then Ollama when `OLLAMA_BASE_URL` or `OLLAMA_MODEL` is set, and finally DuckDuckGo. The existing `groq`, `gemini`, `openai`, and `xai` providers remain available when their keys are configured.
+
 Groups use a separate admin-only command: `.chatbot on` enables automatic AI replies in that WhatsApp group, and `.chatbot off` disables them. The private-chat AI commands do not change group chatbot settings.
 
 Configure one supported provider in Railway:
@@ -61,4 +68,4 @@ AI_PROVIDER=groq
 GROQ_API_KEY=...
 ```
 
-Supported providers are `groq`, `gemini`, `openai`, and `xai`. `AI_MODEL` is optional and overrides the provider default.
+Supported providers are `auto`, `ollama`, `duckduckgo`, `groq`, `gemini`, `openai`, and `xai`. `AI_MODEL` is optional and overrides the provider default.

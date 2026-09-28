@@ -23,12 +23,10 @@ const config = {
     aiModel: process.env.AI_MODEL || process.env.VISION_MODEL || '',
     visionProvider: process.env.VISION_PROVIDER || 'auto',
     visionModel: process.env.VISION_MODEL || '',
-    // Links
-    channelLink: process.env.CHANNEL_LINK || '',
+    // Repository used by the owner-only plugin updater
     updateZipUrl: process.env.UPDATE_URL || 'https://github.com/realjumason-md/aijai-md/archive/refs/heads/main.zip',
     pluginRepo: process.env.PLUGIN_REPO || 'realjumason-md/aijai-md',
     pluginBranch: process.env.PLUGIN_BRANCH || 'main',
-    ytChannel: process.env.YT_CHANNEL || '',
     // Session
     sessionId: process.env.SESSION_ID || '',
     pairingNumber: process.env.PAIRING_NUMBER || process.env.OWNER_NUMBER || '256706106326',
