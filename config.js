@@ -29,7 +29,7 @@ const config = {
     pluginBranch: process.env.PLUGIN_BRANCH || 'main',
     // Session
     sessionId: process.env.SESSION_ID || '',
-    pairingNumber: process.env.PAIRING_NUMBER || process.env.OWNER_NUMBER || '256706106326',
+    pairingNumber: process.env.PAIRING_NUMBER || '',
     // Performance
     port: Number(process.env.PORT) || 5000,
     maxStoreMessages: Number(process.env.MAX_STORE_MESSAGES) || 20,

@@ -20,12 +20,16 @@ The volume keeps the Baileys session, bot settings, message store, and JSON stat
 
 The bot does not watch source files in production. Use `.updateplugins` for live plugin-only changes; full source changes should be deployed normally. The Railway service is configured to restart automatically if the process exits, while the mounted volume keeps the WhatsApp session available to the new process.
 
-Required variables for a new connection:
+For a new connection, open the Railway service URL and use the **Connect WhatsApp** form to enter your full number with country code. The pairing code is displayed on that page and is no longer written to Railway logs.
+
+Optional variables for a new connection:
 
 ```env
 OWNER_NUMBER=256706106326
 PAIRING_NUMBER=256706106326
 ```
+
+Set `PAIRING_NUMBER` only if you want the service to request a code automatically at startup. Otherwise, leave it unset and use the web form.
 
 ## Live plugin updates
 

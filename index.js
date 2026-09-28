@@ -18,7 +18,7 @@ import pino from 'pino';
 import config from './config.js';
 import store, { gracefulShutdown as shutdownStore } from './lib/lightweight_store.js';
 import SaveCreds from './lib/session.js';
-import { server, PORT } from './lib/server.js';
+import { server, PORT, registerPairingHandler, updatePairingState } from './lib/server.js';
 import { printLog } from './lib/print.js';
 import { writeErrorLog } from './lib/logger.js';
 import { handleMessages, handleGroupParticipantUpdate, handleStatus, handleCall } from './lib/messageHandler.js';
@@ -243,6 +243,49 @@ async function startQasimDev() {
             keepAliveIntervalMs: 10000,
         });
         activeSocket = QasimDev;
+        let pairingRequestInFlight = false;
+        const requestPairingCode = async (num) => {
+            if (state.creds?.registered === true) {
+                const error = new Error('This WhatsApp session is already connected.');
+                error.code = 'PAIRING_UNAVAILABLE';
+                throw error;
+            }
+            if (pairingRequestInFlight) {
+                const error = new Error('A pairing request is already in progress.');
+                error.code = 'PAIRING_BUSY';
+                throw error;
+            }
+            pairingRequestInFlight = true;
+            updatePairingState({
+                status: 'generating',
+                code: null,
+                phoneNumber: num,
+                message: 'Generating your pairing code...'
+            });
+            try {
+                let code = await QasimDev.requestPairingCode(num);
+                code = code?.match(/.{1,4}/g)?.join("-") || code;
+                updatePairingState({
+                    status: 'ready',
+                    code,
+                    phoneNumber: num,
+                    message: 'Enter this code in WhatsApp on your phone.'
+                });
+                return code;
+            }
+            catch (error) {
+                updatePairingState({
+                    status: 'error',
+                    code: null,
+                    message: 'The pairing code could not be generated. Try again.'
+                });
+                throw error;
+            }
+            finally {
+                pairingRequestInFlight = false;
+            }
+        };
+        registerPairingHandler(requestPairingCode);
         QasimDev.store = store;
         const originalSendPresenceUpdate = QasimDev.sendPresenceUpdate;
         const originalReadMessages = QasimDev.readMessages;
@@ -377,44 +420,40 @@ async function startQasimDev() {
             else if (rl && !rlClosed) {
                 phoneNumberInput = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFormat: 923001234567 (without + or spaces) : `)));
             }
-            else {
+            else if (process.stdin.isTTY) {
                 phoneNumberInput = phoneNumber;
                 printLog('info', `Using default phone number: ${phoneNumberInput}`);
             }
-            phoneNumberInput = phoneNumberInput.replace(/[^0-9]/g, '');
-            const pn = PhoneNumber(`+${ phoneNumberInput}`);
-            if (!pn.valid) {
-                printLog('error', 'Invalid phone number format');
-                if (rl && !rlClosed)
-                    rl.close();
-                process.exit(1);
-            }
-            const doPairing = async (num, attempt = 1) => {
-                try {
-                    let code = await QasimDev.requestPairingCode(num);
-                    code = code?.match(/.{1,4}/g)?.join("-") || code;
-                    console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)));
-                    printLog('success', `Pairing code generated: ${code}`);
-                    if (rl && !rlClosed) {
+            if (phoneNumberInput) {
+                phoneNumberInput = phoneNumberInput.replace(/[^0-9]/g, '');
+                const pn = PhoneNumber(`+${ phoneNumberInput}`);
+                if (!pn.valid) {
+                    printLog('error', 'Invalid phone number format');
+                    if (rl && !rlClosed)
                         rl.close();
-                        rl = null;
-                    }
+                    process.exit(1);
                 }
-                catch (error) {
-                    if (attempt < 3) {
-                        try {
-                            rmSync(SESSION_DIR, { recursive: true, force: true });
+                setTimeout(async () => {
+                    try {
+                        await requestPairingCode(phoneNumberInput);
+                        if (rl && !rlClosed) {
+                            rl.close();
+                            rl = null;
                         }
-                        catch (_e) { /* ignore */ }
-                        await delay(3000);
-                        startQasimDev();
                     }
-                    else {
-                        printLog('error', 'All 3 pairing attempts failed. Please restart manually.');
+                    catch (_error) {
+                        printLog('error', 'Pairing code generation failed. Use the web form to try again.');
                     }
-                }
-            };
-            setTimeout(() => doPairing(phoneNumberInput), 3000);
+                }, 3000);
+            }
+            else {
+                updatePairingState({
+                    status: 'waiting',
+                    code: null,
+                    message: 'Ready. Enter your WhatsApp number on this page.'
+                });
+                printLog('info', 'Waiting for a phone number from the web pairing form.');
+            }
         }
         else if (isRegistered) {
             if (rl && !rlClosed) {
@@ -442,6 +481,11 @@ async function startQasimDev() {
                 }
             }
             if (connection === "open") {
+                updatePairingState({
+                    status: 'connected',
+                    code: null,
+                    message: 'WhatsApp is connected.'
+                });
                 printLog('success', 'Bot connected successfully!');
                 try {
                     const setbioModule = await import('./plugins/setbio.js');
@@ -481,6 +525,12 @@ async function startQasimDev() {
                 console.log();
             }
             if (connection === 'close') {
+                registerPairingHandler(null);
+                updatePairingState({
+                    status: 'waiting',
+                    code: null,
+                    message: 'WhatsApp disconnected. Waiting to reconnect...'
+                });
                 if (shuttingDown)
                     return;
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
