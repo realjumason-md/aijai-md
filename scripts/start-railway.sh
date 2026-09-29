@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 model="${OLLAMA_MODEL:-llama3.2:3b}"
+export OLLAMA_HOST="${OLLAMA_HOST:-127.0.0.1:11434}"
 ollama serve > /tmp/ollama.log 2>&1 &
 ollama_pid=$!
 
