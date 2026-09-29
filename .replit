@@ -30,7 +30,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "ollama serve"
+args = "bash scripts/start-ollama.sh"
 
 [workflows.workflow.metadata]
 outputType = "console"
