@@ -1,1 +1,1 @@
-web: npm run start:optimized
+web: bash scripts/start-railway.sh
