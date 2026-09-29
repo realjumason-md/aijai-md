@@ -2,6 +2,13 @@ FROM quay.io/qasimtech/mega-md:latest
 
 WORKDIR /root/aijai-md
 
+RUN if ! command -v curl >/dev/null 2>&1; then \
+      apt-get update && \
+      apt-get install -y --no-install-recommends ca-certificates curl && \
+      rm -rf /var/lib/apt/lists/*; \
+    fi && \
+    curl --fail --silent --show-error --location https://ollama.com/install.sh | sh
+
 COPY package.json package-lock.json ./
 RUN set -eux; \
     attempt=1; \
@@ -29,4 +36,4 @@ COPY . .
 
 ENV NODE_ENV=production
 EXPOSE 5000
-CMD ["npm", "run", "start:optimized"]
+CMD ["bash", "scripts/start-railway.sh"]
