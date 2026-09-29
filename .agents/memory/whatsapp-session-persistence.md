@@ -13,4 +13,6 @@ WhatsApp to request a new pairing and increases account risk.
 
 **How to apply:** Require a successful read/write check for the encrypted
 backup before pairing. Keep the backup on a branch or store that does not
-trigger production deploys, and never persist raw WhatsApp credentials.
+trigger production deploys, never persist raw WhatsApp credentials, and never
+request a new pairing code automatically while recovering from a socket restart.
+Only an explicit first-time pairing or actual logout should enter pairing flow.

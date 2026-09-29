@@ -25,7 +25,7 @@ import { handleMessages, handleGroupParticipantUpdate, handleStatus, handleCall 
 import { aijaiState } from './lib/aijai-state.js';
 import commandHandler from './lib/commandHandler.js';
 import { DATA_DIR, SESSION_DIR, TEMP_DIR, storageConfigurationError } from './lib/paths.js';
-import { flushGithubSessionSync, restoreGithubSession, scheduleGithubSessionSync, verifyGithubSessionStorage } from './lib/session-storage.js';
+import { clearGithubSessionBackup, flushGithubSessionSync, restoreGithubSession, scheduleGithubSessionSync, verifyGithubSessionStorage } from './lib/session-storage.js';
 const memoryRestartLimitMb = Number(process.env.MEMORY_RESTART_MB) || 0;
 const storageError = storageConfigurationError();
 if (storageError) {
@@ -89,11 +89,18 @@ global.botname = config.botName || "MEGA-MD";
 global.themeemoji = "•";
 const pairingCode = !process.argv.includes("--qr-code");
 const useMobile = process.argv.includes("--mobile");
+const allowCliPairing = process.env.CLI_PAIRING === 'true';
 let rl = null;
 let rlClosed = false;
 let activeSocket = null;
 let shuttingDown = false;
-if (process.stdin.isTTY && !config.pairingNumber) {
+let startInFlight = false;
+let reconnectTimer = null;
+let automaticPairingAttempted = false;
+let pairingCodeIssued = false;
+let lastPairingRequestAt = 0;
+const pairingCooldownMs = Math.max(30000, Number(process.env.PAIRING_COOLDOWN_MS) || 120000);
+if (allowCliPairing && process.stdin.isTTY && !config.pairingNumber) {
     rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout
@@ -136,6 +143,15 @@ const shutdown = async (signal) => {
 };
 process.on('SIGINT', () => void shutdown('SIGINT'));
 process.on('SIGTERM', () => void shutdown('SIGTERM'));
+function scheduleReconnect(delayMs, reason) {
+    if (shuttingDown || reconnectTimer)
+        return;
+    printLog('connection', `${reason} Reconnecting in ${delayMs}ms...`);
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        void startQasimDev();
+    }, delayMs);
+}
 function ensureSessionDirectory() {
     const sessionPath = SESSION_DIR;
     if (!existsSync(sessionPath)) {
@@ -214,8 +230,9 @@ server.listen(PORT, () => {
     printLog('success', `Server listening on port ${PORT}`);
 });
 async function startQasimDev() {
-    if (shuttingDown)
+    if (shuttingDown || startInFlight)
         return;
+    startInFlight = true;
     try {
         const { version } = await fetchLatestBaileysVersion();
         ensureSessionDirectory();
@@ -265,11 +282,24 @@ async function startQasimDev() {
                 error.code = 'PAIRING_UNAVAILABLE';
                 throw error;
             }
+            if (pairingCodeIssued) {
+                const error = new Error('A pairing code was already issued. Finish that pairing or restart the service deliberately before requesting another.');
+                error.code = 'PAIRING_COOLDOWN';
+                throw error;
+            }
             if (pairingRequestInFlight) {
                 const error = new Error('A pairing request is already in progress.');
                 error.code = 'PAIRING_BUSY';
                 throw error;
             }
+            const now = Date.now();
+            if (now - lastPairingRequestAt < pairingCooldownMs) {
+                const error = new Error('Please wait before requesting another pairing code.');
+                error.code = 'PAIRING_COOLDOWN';
+                throw error;
+            }
+            lastPairingRequestAt = now;
+            pairingCodeIssued = true;
             pairingRequestInFlight = true;
             updatePairingState({
                 status: 'generating',
@@ -432,14 +462,14 @@ async function startQasimDev() {
             else if (process.env.PAIRING_NUMBER) {
                 phoneNumberInput = process.env.PAIRING_NUMBER;
             }
-            else if (rl && !rlClosed) {
+            else if (allowCliPairing && rl && !rlClosed) {
                 phoneNumberInput = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFormat: 923001234567 (without + or spaces) : `)));
             }
-            else if (process.stdin.isTTY) {
+            else if (allowCliPairing && process.stdin.isTTY) {
                 phoneNumberInput = phoneNumber;
                 printLog('info', `Using default phone number: ${phoneNumberInput}`);
             }
-            if (phoneNumberInput) {
+            if (phoneNumberInput && !automaticPairingAttempted) {
                 phoneNumberInput = phoneNumberInput.replace(/[^0-9]/g, '');
                 const pn = PhoneNumber(`+${ phoneNumberInput}`);
                 if (!pn.valid) {
@@ -448,6 +478,7 @@ async function startQasimDev() {
                         rl.close();
                     process.exit(1);
                 }
+                automaticPairingAttempted = true;
                 setTimeout(async () => {
                     try {
                         await requestPairingCode(phoneNumberInput);
@@ -558,6 +589,9 @@ async function startQasimDev() {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
                 const isRestartRequired = statusCode === DisconnectReason.restartRequired;
                 const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
+                if (activeSocket !== QasimDev)
+                    return;
+                activeSocket = null;
                 registerPairingHandler(null);
                 updatePairingState({
                     status: isRestartRequired ? 'reconnecting' : 'waiting',
@@ -568,6 +602,23 @@ async function startQasimDev() {
                 });
                 if (shuttingDown)
                     return;
+                if (isLoggedOut) {
+                    try {
+                        await credsSavePromise;
+                        rmSync(SESSION_DIR, { recursive: true, force: true });
+                    }
+                    catch (_e) { /* ignore */ }
+                    try {
+                        await clearGithubSessionBackup();
+                    }
+                    catch (error) {
+                        printLog('error', `Could not clear the logged-out WhatsApp session backup: ${error.message}`);
+                    }
+                    pairingCodeIssued = false;
+                    lastPairingRequestAt = 0;
+                    scheduleReconnect(3000, 'WhatsApp logged out.');
+                    return;
+                }
                 try {
                     await credsSavePromise;
                     await flushGithubSessionSync();
@@ -575,24 +626,13 @@ async function startQasimDev() {
                 catch (error) {
                     printLog('error', `Could not save WhatsApp credentials before reconnecting: ${error.message}`);
                 }
-                if (isLoggedOut) {
-                    try {
-                        rmSync(SESSION_DIR, { recursive: true, force: true });
-                    }
-                    catch (_e) { /* ignore */ }
-                    await delay(3000);
-                    startQasimDev();
-                    return;
-                }
                 if (isRestartRequired) {
-                    printLog('info', 'Restarting immediately to complete the new WhatsApp login...');
-                    startQasimDev();
+                    printLog('info', 'Restarting the socket to complete the WhatsApp login without requesting another pairing code...');
+                    scheduleReconnect(1000, 'WhatsApp requested a socket restart.');
                     return;
                 }
                 if (statusCode !== DisconnectReason.loggedOut && statusCode !== 401) {
-                    printLog('connection', 'Reconnecting in 5 seconds...');
-                    await delay(5000);
-                    startQasimDev();
+                    scheduleReconnect(5000, 'WhatsApp disconnected.');
                 }
             }
         });
@@ -616,8 +656,10 @@ async function startQasimDev() {
             rl.close();
             rl = null;
         }
-        await delay(5000);
-        startQasimDev();
+        scheduleReconnect(5000, 'Socket startup failed.');
+    }
+    finally {
+        startInFlight = false;
     }
 }
 async function main() {

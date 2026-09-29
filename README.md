@@ -34,8 +34,19 @@ GITHUB_SESSION_BRANCH=bot-session
 SESSION_ENCRYPTION_KEY=use-a-long-random-secret
 ```
 
-Generate `SESSION_ENCRYPTION_KEY` locally with `openssl rand -hex 32` and add
-it directly to Railway. Do not send that value in chat or commit it.
+`UPDATE_URL` can point at the public source archive and does not need a token:
+
+```env
+UPDATE_URL=https://github.com/realjumason-md/aijai-md/archive/refs/heads/main.zip
+```
+
+The GitHub token is used only for the encrypted session backup branch. It needs
+repository contents read/write permission. A separate `SESSION_ENCRYPTION_KEY`
+is recommended; if it is omitted, the bot uses the GitHub token as the
+encryption key so the backup still works with a single configured secret.
+Changing or replacing that token later will make an older encrypted backup
+unreadable, so keep the token stable or set a separate encryption key.
+Never send either secret in chat or commit it.
 
 The bot stores the Baileys session as an encrypted file on the separate
 `bot-session` branch. It restores that file before attempting to pair and
@@ -48,7 +59,17 @@ bot refuses to start when persistent session storage is unavailable. This is
 intentional: it prevents a new WhatsApp pairing from being saved only inside
 a disposable container.
 
-The bot does not watch source files in production. Use `.updateplugins` for live plugin-only changes; full source changes should be deployed normally. The Railway service is configured to restart automatically if the process exits, while the mounted volume keeps the WhatsApp session available to the new process.
+The bot does not watch source files in production. Use `.updateplugins` for
+live plugin-only changes; public-repository plugin downloads do not restart
+the WhatsApp connection. Full source changes should be deployed normally.
+The Railway service is configured to restart automatically if the process
+exits, while the mounted volume or encrypted GitHub backup keeps the WhatsApp
+session available to the new process.
+
+The bot never requests another pairing code while recovering from a socket
+restart, and it rate-limits pairing requests in the running process. A new
+pairing is only needed after an actual WhatsApp logout or when no valid
+persistent session backup exists.
 
 For a new connection, open the Railway service URL and use the **Connect WhatsApp** form to enter your full number with country code. The pairing code is displayed on that page and is no longer written to Railway logs.
 
@@ -60,6 +81,8 @@ PAIRING_NUMBER=256706106326
 ```
 
 Set `PAIRING_NUMBER` only if you want the service to request a code automatically at startup. Otherwise, leave it unset and use the web form.
+The bot does not read a phone number from deployment stdin unless
+`CLI_PAIRING=true` is explicitly set.
 
 ## Live plugin updates
 
