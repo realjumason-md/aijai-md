@@ -62,13 +62,13 @@ Use `.ai <question>` for a direct AI request. `.aion`, `.aioff`, `.aionall`, and
 
 `.aiswitch <ollama|off>` changes the local AI state and saves the choice. `.aikey` shows Ollama readiness without revealing secrets.
 
-- `ollama` — uses an Ollama server you run locally or at `OLLAMA_BASE_URL`; no API key is required.
+- `ollama` — uses an Ollama server you run locally or at `OLLAMA_BASE_URL`. Hosted Ollama services may also require `OLLAMA_API_KEY`.
 
 Ollama is the only AI provider. Text chats use `OLLAMA_MODEL` (default `llama3.2:3b`) and images use `OLLAMA_VISION_MODEL` (default `qwen2.5vl:3b`). Image messages and captions are sent to the local vision model; replying to an image with `.ai` also works.
 
 Groups use a separate admin-only command: `.chatbot on` enables automatic AI replies in that WhatsApp group, and `.chatbot off` disables them. The private-chat AI commands do not change group chatbot settings.
 
-Run Ollama locally and pull the models before starting the bot:
+For local development, run Ollama and pull the models before starting the bot:
 
 ```bash
 ollama serve
@@ -76,11 +76,14 @@ ollama pull llama3.2:3b
 ollama pull qwen2.5vl:3b
 ```
 
-The bot connects to `http://127.0.0.1:11434` by default. Set these variables when the Ollama server is elsewhere:
+Railway does not run Ollama inside the bot container. Set `OLLAMA_BASE_URL` to a reachable hosted Ollama server and make sure the configured models are already installed there:
 
 ```env
 AI_PROVIDER=ollama
-OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_BASE_URL=https://your-ollama-host.example.com
+OLLAMA_API_KEY=your-ollama-token
 OLLAMA_MODEL=llama3.2:3b
 OLLAMA_VISION_MODEL=qwen2.5vl:3b
 ```
+
+`OLLAMA_API_KEY` is optional and should only be set when the hosted Ollama service requires bearer authentication. The bot checks `/api/tags` before sending a request, so a missing model is reported clearly instead of producing a generic AI failure.
