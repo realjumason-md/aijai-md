@@ -25,6 +25,7 @@ import { handleMessages, handleGroupParticipantUpdate, handleStatus, handleCall 
 import { aijaiState } from './lib/aijai-state.js';
 import commandHandler from './lib/commandHandler.js';
 import { DATA_DIR, SESSION_DIR, TEMP_DIR, storageConfigurationError } from './lib/paths.js';
+import { flushGithubSessionSync, restoreGithubSession, scheduleGithubSessionSync, verifyGithubSessionStorage } from './lib/session-storage.js';
 const memoryRestartLimitMb = Number(process.env.MEMORY_RESTART_MB) || 0;
 const storageError = storageConfigurationError();
 if (storageError) {
@@ -123,6 +124,7 @@ const shutdown = async (signal) => {
             activeSocket.ws.close();
         await aijaiState.persist();
         await store.writeToFile();
+        await flushGithubSessionSync();
         await shutdownStore(signal);
     }
     catch (error) {
@@ -226,6 +228,7 @@ async function startQasimDev() {
                 .then(async () => {
                 ensureSessionDirectory();
                 await saveCreds();
+                scheduleGithubSessionSync();
             });
             credsSavePromise = pendingSave;
             return pendingSave;
@@ -560,6 +563,7 @@ async function startQasimDev() {
                     return;
                 try {
                     await credsSavePromise;
+                    await flushGithubSessionSync();
                 }
                 catch (error) {
                     printLog('error', `Could not save WhatsApp credentials before reconnecting: ${error.message}`);
@@ -614,6 +618,14 @@ async function main() {
     await compileAll();
     await commandHandler.loadCommands();
     printLog('info', 'Starting MEGA MD BOT...');
+    try {
+        await verifyGithubSessionStorage();
+        await restoreGithubSession();
+    }
+    catch (error) {
+        printLog('error', `Could not restore the WhatsApp session: ${error.message}`);
+        process.exit(1);
+    }
     await initializeSession();
     await delay(3000);
     startQasimDev().catch((error) => {

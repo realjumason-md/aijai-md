@@ -21,9 +21,32 @@ volume does not make the directory persistent.
 
 The volume keeps the Baileys session, bot settings, message store, and JSON state across rebuilds and redeployments. Set `SESSION_ID` only when bootstrapping from an existing session; once the session is stored on the volume, later redeployments reuse it without a new pairing code.
 
-In production, the bot refuses to start when no explicit persistent storage
-path is available. This is intentional: it prevents a new WhatsApp pairing
-from being saved only inside a disposable container.
+### Railway free-tier alternative: encrypted GitHub session backup
+
+If your Railway plan does not include volumes, set these variables on the
+Railway service:
+
+```env
+SESSION_STORAGE=github
+GITHUB_PERSONAL_ACCESS_TOKEN=your-token-with-repository-content-access
+GITHUB_SESSION_REPO=realjumason-md/aijai-md
+GITHUB_SESSION_BRANCH=bot-session
+SESSION_ENCRYPTION_KEY=use-a-long-random-secret
+```
+
+Generate `SESSION_ENCRYPTION_KEY` locally with `openssl rand -hex 32` and add
+it directly to Railway. Do not send that value in chat or commit it.
+
+The bot stores the Baileys session as an encrypted file on the separate
+`bot-session` branch. It restores that file before attempting to pair and
+updates it after credential changes. Raw WhatsApp credentials are not stored
+in the repository. The GitHub token must be added to Railway as a secret, not
+committed to the code.
+
+With either a Railway volume or the encrypted GitHub backup configured, the
+bot refuses to start when persistent session storage is unavailable. This is
+intentional: it prevents a new WhatsApp pairing from being saved only inside
+a disposable container.
 
 The bot does not watch source files in production. Use `.updateplugins` for live plugin-only changes; full source changes should be deployed normally. The Railway service is configured to restart automatically if the process exits, while the mounted volume keeps the WhatsApp session available to the new process.
 
