@@ -24,8 +24,13 @@ import { writeErrorLog } from './lib/logger.js';
 import { handleMessages, handleGroupParticipantUpdate, handleStatus, handleCall } from './lib/messageHandler.js';
 import { aijaiState } from './lib/aijai-state.js';
 import commandHandler from './lib/commandHandler.js';
-import { DATA_DIR, SESSION_DIR, TEMP_DIR } from './lib/paths.js';
+import { DATA_DIR, SESSION_DIR, TEMP_DIR, storageConfigurationError } from './lib/paths.js';
 const memoryRestartLimitMb = Number(process.env.MEMORY_RESTART_MB) || 0;
+const storageError = storageConfigurationError();
+if (storageError) {
+    printLog('error', storageError);
+    process.exit(1);
+}
 store.readFromFile();
 setInterval(() => store.writeToFile(), config.storeWriteInterval || 10000);
 setInterval(() => {
