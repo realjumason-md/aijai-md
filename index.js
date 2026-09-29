@@ -18,7 +18,7 @@ import pino from 'pino';
 import config from './config.js';
 import store, { gracefulShutdown as shutdownStore } from './lib/lightweight_store.js';
 import SaveCreds from './lib/session.js';
-import { server, PORT, registerPairingHandler, updatePairingState } from './lib/server.js';
+import { server, HOST, PORT, registerPairingHandler, updatePairingState } from './lib/server.js';
 import { printLog } from './lib/print.js';
 import { writeErrorLog } from './lib/logger.js';
 import { handleMessages, handleGroupParticipantUpdate, handleStatus, handleCall } from './lib/messageHandler.js';
@@ -226,7 +226,7 @@ async function initializeSession() {
         return false;
     }
 }
-server.listen(PORT, () => {
+server.listen(PORT, HOST, () => {
     printLog('success', `Server listening on port ${PORT}`);
 });
 async function startQasimDev() {
