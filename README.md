@@ -16,6 +16,10 @@ Create a Railway volume mounted at `/data` and set:
 BOT_STORAGE_DIR=/data
 ```
 
+Attach the volume to the same Railway service that runs this bot before
+redeploying. Setting `BOT_STORAGE_DIR` without attaching a volume does not
+make the directory persistent.
+
 The volume keeps the Baileys session, bot settings, message store, and JSON state across rebuilds and redeployments. Set `SESSION_ID` only when bootstrapping from an existing session; once the session is stored on the volume, later redeployments reuse it without a new pairing code.
 
 The bot does not watch source files in production. Use `.updateplugins` for live plugin-only changes; full source changes should be deployed normally. The Railway service is configured to restart automatically if the process exits, while the mounted volume keeps the WhatsApp session available to the new process.

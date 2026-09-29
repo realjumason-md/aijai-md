@@ -619,23 +619,9 @@ async function main() {
     });
 }
 main();
-// Session cleanup interval
-const sessionDir = SESSION_DIR;
-setInterval(() => {
-    if (!fs.existsSync(sessionDir))
-        return;
-    fs.readdir(sessionDir, (err, files) => {
-        if (err)
-            return;
-        for (const file of files) {
-            if (file === 'creds.json')
-                continue;
-            if (file.startsWith('app-state-sync-key-'))
-                continue;
-            fs.unlink(path.join(sessionDir, file), () => { });
-        }
-    });
-}, 3 * 60 * 1000);
+// Do not delete files from the session directory. Baileys stores the
+// credentials and Signal key material as multiple files there; removing any
+// of those files breaks the login and can force a new pairing code.
 // Temp folder setup
 const customTemp = TEMP_DIR;
 if (!fs.existsSync(customTemp))
