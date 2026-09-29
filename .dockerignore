@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+session
+temp
+tmp
+coverage
+*.log
+data/*.json
+attached_assets
