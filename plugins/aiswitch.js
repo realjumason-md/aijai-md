@@ -8,7 +8,7 @@ export default {
     directMessageOnly: true,
     ownerOnly: true,
     description: 'Switch the active AI provider',
-    usage: 'aiswitch <auto|ollama|duckduckgo|groq|gemini|openai|xai|off>',
+    usage: 'aiswitch <ollama|off>',
     async handler(_sock, _message, args, context) {
         const provider = args[0]?.toLowerCase();
         if (!provider) {
@@ -18,7 +18,7 @@ export default {
                 `Configured mode: ${status.configured}`,
                 '',
                 `Usage: ${context.prefix}aiswitch <provider>`,
-                'Providers: auto, ollama, duckduckgo, groq, gemini, openai, xai, off'
+                'Providers: ollama, off'
             ].join('\n'));
             return;
         }

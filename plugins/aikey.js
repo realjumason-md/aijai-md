@@ -4,10 +4,10 @@ export default {
     command: 'aikey',
     aliases: ['aistatus'],
     category: 'ai',
-    menuName: 'AI key status',
+    menuName: 'Ollama status',
     directMessageOnly: true,
     ownerOnly: true,
-    description: 'Show AI provider readiness without exposing secrets',
+    description: 'Show local Ollama readiness without exposing secrets',
     usage: 'aikey',
     async handler(_sock, _message, _args, context) {
         const status = getAiStatus();
@@ -16,12 +16,13 @@ export default {
             .join('\n');
         await context.reply([
             `AI provider: ${status.selected}`,
-            `Model: ${status.model || 'none'}`,
+            `Chat model: ${status.model || 'none'}`,
+            `Vision model: ${status.visionModel || 'none'}`,
             '',
             providers,
             '',
-            'API keys are never displayed or accepted in chat.',
-            `Use ${context.prefix}aiswitch <provider> to select one.`
+            'Ollama is local and does not require an API key.',
+            `Use ${context.prefix}aiswitch ollama to enable it.`
         ].join('\n'));
     }
 };

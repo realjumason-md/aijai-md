@@ -56,20 +56,27 @@ The command is owner-only. `PLUGIN_REPO` and `PLUGIN_BRANCH` can override the de
 
 Use `.ai <question>` for a direct AI request. `.aion`, `.aioff`, `.aionall`, and `.aioffall` work only in one-to-one chats. `.aion` enables automatic AI replies in the current private chat, and `.aioff` disables them there. `.aionall` enables automatic AI replies for all direct messages, while `.aioffall` disables them globally. The latest private-chat setting command takes precedence: a global command clears older per-chat overrides, and a later per-chat command overrides the global setting for that chat.
 
-`.aiswitch <provider>` changes the active provider and saves the choice. `.aikey` shows provider readiness without revealing any secret. Keyless options are:
+`.aiswitch <ollama|off>` changes the local AI state and saves the choice. `.aikey` shows Ollama readiness without revealing secrets.
 
 - `ollama` — uses an Ollama server you run locally or at `OLLAMA_BASE_URL`; no API key is required.
-- `duckduckgo` — performs a keyless DuckDuckGo lookup. It is a search/answer source, not a generative chat model.
 
-`auto` prefers configured key-based providers, then Ollama when `OLLAMA_BASE_URL` or `OLLAMA_MODEL` is set, and finally DuckDuckGo. The existing `groq`, `gemini`, `openai`, and `xai` providers remain available when their keys are configured.
+Ollama is the only AI provider. Text chats use `OLLAMA_MODEL` (default `llama3.2:3b`) and images use `OLLAMA_VISION_MODEL` (default `qwen2.5vl:3b`). Image messages and captions are sent to the local vision model; replying to an image with `.ai` also works.
 
 Groups use a separate admin-only command: `.chatbot on` enables automatic AI replies in that WhatsApp group, and `.chatbot off` disables them. The private-chat AI commands do not change group chatbot settings.
 
-Configure one supported provider in Railway:
+Run Ollama locally and pull the models before starting the bot:
 
-```env
-AI_PROVIDER=groq
-GROQ_API_KEY=...
+```bash
+ollama serve
+ollama pull llama3.2:3b
+ollama pull qwen2.5vl:3b
 ```
 
-Supported providers are `auto`, `ollama`, `duckduckgo`, `groq`, `gemini`, `openai`, and `xai`. `AI_MODEL` is optional and overrides the provider default.
+The bot connects to `http://127.0.0.1:11434` by default. Set these variables when the Ollama server is elsewhere:
+
+```env
+AI_PROVIDER=ollama
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=llama3.2:3b
+OLLAMA_VISION_MODEL=qwen2.5vl:3b
+```

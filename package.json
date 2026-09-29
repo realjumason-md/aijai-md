@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@hapi/boom": "^10.0.1",
-    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
     "acrcloud": "^1.4.0",
     "awesome-phonenumber": "^5.9.0",
     "axios": "^1.8.4",
@@ -39,7 +39,7 @@
     "qrcode": "^1.5.4",
     "ruhend-scraper": "*",
     "sharp": "^0.35.3",
-    "simple-git": "^3.30.0",
+    "simple-git": "^4.0.2",
     "stickers-formatter": "^1.0.0",
     "syntax-error": "^1.4.0",
     "yt-search": "^2.12.1"
