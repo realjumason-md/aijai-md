@@ -15,7 +15,7 @@ export default {
             return;
         }
         if (!hasAiProvider()) {
-            await context.reply(`AI is switched off. Use ${context.prefix}aiswitch ollama.`);
+            await context.reply(`AI is switched off. Use ${context.prefix}aiswitch groq.`);
             return;
         }
         const reply = await generateAiReply({

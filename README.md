@@ -86,30 +86,19 @@ The command is owner-only. `PLUGIN_REPO` and `PLUGIN_BRANCH` can override the de
 
 Use `.ai <question>` for a direct AI request. `.aion`, `.aioff`, `.aionall`, and `.aioffall` work only in one-to-one chats. `.aion` enables automatic AI replies in the current private chat, and `.aioff` disables them there. `.aionall` enables automatic AI replies for all direct messages, while `.aioffall` disables them globally. The latest private-chat setting command takes precedence: a global command clears older per-chat overrides, and a later per-chat command overrides the global setting for that chat.
 
-`.aiswitch <ollama|off>` changes the local AI state and saves the choice. `.aikey` shows Ollama readiness without revealing secrets.
+`.aiswitch <groq|off>` changes the AI state and saves the choice. `.aikey` shows Groq readiness without revealing the API key.
 
-- `ollama` — uses an Ollama server you run locally or at `OLLAMA_BASE_URL`. Hosted Ollama services may also require `OLLAMA_API_KEY`.
-
-Ollama is the only AI provider. Text chats use `OLLAMA_MODEL` (default `llama3.2:3b`) and images use `OLLAMA_VISION_MODEL` (default `qwen2.5vl:3b`). Image messages and captions are sent to the local vision model; replying to an image with `.ai` also works.
+Groq is the only AI provider. Text chats use `GROQ_MODEL` (default `llama-3.3-70b-versatile`) and images use `GROQ_VISION_MODEL` (default `meta-llama/llama-4-scout-17b-16e-instruct`). Image messages and captions are sent to Groq vision; replying to an image with `.ai` also works.
 
 Groups use a separate admin-only command: `.chatbot on` enables automatic AI replies in that WhatsApp group, and `.chatbot off` disables them. The private-chat AI commands do not change group chatbot settings.
 
-For local development, run Ollama and pull the models before starting the bot:
-
-```bash
-ollama serve
-ollama pull llama3.2:3b
-ollama pull qwen2.5vl:3b
-```
-
-Railway does not run Ollama inside the bot container. Set `OLLAMA_BASE_URL` to a reachable hosted Ollama server and make sure the configured models are already installed there:
+Set these variables in the Railway service:
 
 ```env
-AI_PROVIDER=ollama
-OLLAMA_BASE_URL=https://your-ollama-host.example.com
-OLLAMA_API_KEY=your-ollama-token
-OLLAMA_MODEL=llama3.2:3b
-OLLAMA_VISION_MODEL=qwen2.5vl:3b
+AI_PROVIDER=groq
+GROQ_API_KEY=your-groq-key
+GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_VISION_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
 ```
 
-`OLLAMA_API_KEY` is optional and should only be set when the hosted Ollama service requires bearer authentication. The bot checks `/api/tags` before sending a request, so a missing model is reported clearly instead of producing a generic AI failure.
+`GROQ_API_KEY` is required for AI replies and is never printed by `.aikey`. Do not commit it, put it in a public file, or send it in chat.

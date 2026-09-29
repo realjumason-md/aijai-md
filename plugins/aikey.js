@@ -4,10 +4,10 @@ export default {
     command: 'aikey',
     aliases: ['aistatus'],
     category: 'ai',
-    menuName: 'Ollama status',
+    menuName: 'Groq status',
     directMessageOnly: true,
     ownerOnly: true,
-    description: 'Show local Ollama readiness without exposing secrets',
+    description: 'Show Groq API readiness without exposing secrets',
     usage: 'aikey',
     async handler(_sock, _message, _args, context) {
         const status = getAiStatus();
@@ -21,8 +21,8 @@ export default {
             '',
             providers,
             '',
-            'Ollama is local and does not require an API key.',
-            `Use ${context.prefix}aiswitch ollama to enable it.`
+            'The Groq API key is never shown in chat.',
+            `Use ${context.prefix}aiswitch groq to enable Groq, or ${context.prefix}aiswitch off to disable AI.`
         ].join('\n'));
     }
 };

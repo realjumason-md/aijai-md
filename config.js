@@ -19,22 +19,12 @@ const config = {
     prefix: _prefixes[0],
     commandMode: process.env.COMMAND_MODE || 'public',
     timeZone: process.env.TIMEZONE || 'Africa/Kampala',
-    aiProvider: process.env.AI_PROVIDER || 'ollama',
-    aiModel: process.env.AI_MODEL || process.env.OLLAMA_MODEL || '',
-    visionProvider: 'ollama',
-    visionModel: process.env.VISION_MODEL || process.env.OLLAMA_VISION_MODEL || '',
-    // Local Ollama is convenient during development. Railway must use a
-    // separately hosted Ollama instance, configured with OLLAMA_BASE_URL.
-    ollamaBaseUrl: process.env.OLLAMA_BASE_URL ||
-        process.env.OLLAMA_URL ||
-        (process.env.NODE_ENV === 'production' ||
-            process.env.RAILWAY_ENVIRONMENT ||
-            process.env.RAILWAY_ENVIRONMENT_NAME ||
-            process.env.RAILWAY_PROJECT_ID ||
-            process.env.RAILWAY_SERVICE_ID
-            ? ''
-            : 'http://127.0.0.1:11434'),
-    ollamaApiKey: process.env.OLLAMA_API_KEY || '',
+    aiProvider: process.env.AI_PROVIDER || 'groq',
+    aiModel: process.env.AI_MODEL || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+    visionProvider: 'groq',
+    visionModel: process.env.VISION_MODEL || process.env.GROQ_VISION_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct',
+    groqApiKey: process.env.GROQ_API_KEY || '',
+    groqBaseUrl: (process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1').replace(/\/+$/, ''),
     // Repository used by the owner-only plugin updater
     updateZipUrl: process.env.UPDATE_URL || 'https://github.com/realjumason-md/aijai-md/archive/refs/heads/main.zip',
     pluginRepo: process.env.PLUGIN_REPO || 'realjumason-md/aijai-md',

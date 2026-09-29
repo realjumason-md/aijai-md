@@ -511,6 +511,13 @@ async function startQasimDev() {
                 });
                 printLog('success', 'Bot connected successfully!');
                 try {
+                    await flushGithubSessionSync();
+                    printLog('success', 'WhatsApp session backup completed.');
+                }
+                catch (error) {
+                    printLog('error', `WhatsApp session backup failed: ${error.message}`);
+                }
+                try {
                     const setbioModule = await import('./plugins/setbio.js');
                     const startAutoBio = setbioModule.startAutoBio || setbioModule.default?.startAutoBio;
                     if (typeof startAutoBio === 'function')

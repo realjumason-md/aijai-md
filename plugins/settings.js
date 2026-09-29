@@ -68,7 +68,7 @@ export default {
             readSetting('pmblocker', 'pmblocker.json')
         ]);
 
-        const aiProvider = context.config.aiProvider || 'auto';
+        const aiProvider = context.config.aiProvider || 'groq';
         const aiModel = context.config.aiModel || 'default';
         const aiEnabled = context.aiState?.isEnabled(chatId) === true;
         const lines = [

@@ -1,6 +1,6 @@
 #!/bin/bash
-# MEGA-MD Railway One-Click Deployer
-# Usage: bash <(curl -s https://raw.githubusercontent.com/GlobalTechInfo/MEGA-MD/main/lib/railway.sh)
+# aijai-md Railway deploy helper
+# Usage: bash <(curl -s https://raw.githubusercontent.com/realjumason-md/aijai-md/main/lib/railway.sh)
 
 set -e
 
@@ -13,8 +13,7 @@ NC='\033[0m'
 
 echo -e "${CYAN}"
 echo "╔═══════════════════════════════════════╗"
-echo "║       MEGA-MD Railway Deployer        ║"
-echo "║          by GlobalTechInfo            ║"
+echo "║       aijai-md Railway Deployer       ║"
 echo "╚═══════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -35,22 +34,21 @@ echo ""
 echo -e "${BOLD}📋 Enter your bot details:${NC}"
 echo ""
 
-read -p "$(echo -e ${CYAN}Session ID (GlobalTechInfo/MEGA-MD_xxxxx): ${NC})" SESSION_ID
-if [ -z "$SESSION_ID" ]; then
-    echo -e "${RED}❌ Session ID is required!${NC}"
-    exit 1
-fi
+read -r -p "${CYAN}Session ID (optional when restoring from persistent storage): ${NC}" SESSION_ID
 
-read -p "$(echo -e ${CYAN}Owner WhatsApp number (e.g. 923001234567): ${NC})" OWNER_NUMBER
-OWNER_NUMBER=${OWNER_NUMBER:-923000000000}
+read -r -p "${CYAN}Owner WhatsApp number (e.g. 256706106326): ${NC}" OWNER_NUMBER
+OWNER_NUMBER=${OWNER_NUMBER:-256706106326}
 
-read -p "$(echo -e ${CYAN}Bot name (default: MEGA-MD): ${NC})" BOT_NAME
-BOT_NAME=${BOT_NAME:-MEGA-MD}
+read -r -p "${CYAN}Bot name (default: aijai-md): ${NC}" BOT_NAME
+BOT_NAME=${BOT_NAME:-aijai-md}
 
-read -p "$(echo -e ${CYAN}MongoDB URL (recommended, press Enter to skip): ${NC})" MONGO_URL
+read -r -p "${CYAN}MongoDB URL (recommended, press Enter to skip): ${NC}" MONGO_URL
 
-read -p "$(echo -e ${CYAN}Timezone (default: Asia/Karachi): ${NC})" TIMEZONE
-TIMEZONE=${TIMEZONE:-Asia/Karachi}
+read -r -p "${CYAN}Timezone (default: Africa/Kampala): ${NC}" TIMEZONE
+TIMEZONE=${TIMEZONE:-Africa/Kampala}
+
+read -r -s -p "${CYAN}Groq API key (leave blank to add it later in Railway): ${NC}" GROQ_API_KEY
+echo
 
 echo ""
 echo -e "${YELLOW}🚀 Starting deployment...${NC}"
@@ -58,9 +56,9 @@ echo ""
 
 # Clone if not in repo
 if [ ! -f "railway.json" ]; then
-    echo -e "${YELLOW}📦 Cloning MEGA-MD repo...${NC}"
-    git clone https://github.com/GlobalTechInfo/MEGA-MD mega-md-deploy
-    cd mega-md-deploy
+    echo -e "${YELLOW}📦 Cloning aijai-md repo...${NC}"
+    git clone https://github.com/realjumason-md/aijai-md aijai-md-deploy
+    cd aijai-md-deploy
 fi
 
 # Init railway project
@@ -74,9 +72,11 @@ railway variables set \
     OWNER_NUMBER="$OWNER_NUMBER" \
     BOT_NAME="$BOT_NAME" \
     TIMEZONE="$TIMEZONE" \
+    AI_PROVIDER="groq" \
     COMMAND_MODE="public"
 
 [ -n "$MONGO_URL" ] && railway variables set MONGO_URL="$MONGO_URL"
+[ -n "$GROQ_API_KEY" ] && railway variables set GROQ_API_KEY="$GROQ_API_KEY"
 
 # Deploy
 echo -e "${YELLOW}📤 Deploying to Railway (this may take 3-5 minutes)...${NC}"
