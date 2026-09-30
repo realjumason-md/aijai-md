@@ -14,6 +14,12 @@ test('keeps uncertainty from becoming an automatic refusal', () => {
     assert.match(SYSTEM_PROMPT, /still give the best answer you can/i);
 });
 
+test('handles bluntly worded pregnancy and sexual-health questions clinically', () => {
+    assert.match(SYSTEM_PROMPT, /pregnancy, childbirth, anatomy, and sexual-health questions/i);
+    assert.match(SYSTEM_PROMPT, /do not refuse solely because of word choice/i);
+    assert.match(SYSTEM_PROMPT, /general-health language/i);
+});
+
 test('keeps the bot transparent about being an AI assistant', () => {
     assert.match(SYSTEM_PROMPT, /never deny it/i);
 });
