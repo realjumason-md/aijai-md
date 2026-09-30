@@ -22,7 +22,7 @@ const config = {
     aiProvider: process.env.AI_PROVIDER || 'groq',
     aiModel: process.env.AI_MODEL || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
     visionProvider: 'groq',
-    visionModel: process.env.VISION_MODEL || process.env.GROQ_VISION_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct',
+    visionModel: process.env.VISION_MODEL || process.env.GROQ_VISION_MODEL || 'qwen/qwen3.8-27b',
     groqApiKey: process.env.GROQ_API_KEY || '',
     groqBaseUrl: (process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1').replace(/\/+$/, ''),
     // Repository used by the owner-only plugin updater
