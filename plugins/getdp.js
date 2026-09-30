@@ -16,9 +16,9 @@ export default {
             target = info.mentionedJid[0];
             displayName = 'User';
         }
-        else if (info?.participant) {
-            target = info.participant;
-            displayName = message.pushName || 'User';
+        else if (info?.participant || info?.remoteJid) {
+            target = info.participant || info.remoteJid;
+            displayName = info.pushName || 'User';
         }
         else if (args[0]) {
             const number = args[0].replace(/[^0-9]/g, '');
@@ -35,6 +35,8 @@ export default {
         }
 
         try {
+            if (!target || typeof target !== 'string')
+                throw new Error('No valid WhatsApp user was found.');
             if (target.endsWith('@lid') && isGroup) {
                 const metadata = await sock.groupMetadata(chatId);
                 const participant = metadata.participants.find(

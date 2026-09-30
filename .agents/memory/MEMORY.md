@@ -1,1 +1,2 @@
 - [WhatsApp session persistence](whatsapp-session-persistence.md) — free Railway deployments need encrypted external backup because Baileys auth is a changing multi-file state.
+- [Command control pipeline](command-control-pipeline.md) — mode and maintenance settings must be enforced in message dispatch, not only exposed through owner commands.

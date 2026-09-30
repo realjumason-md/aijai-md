@@ -14,6 +14,15 @@ function getRandomQuote() {
     return fallbackQuotes[Math.floor(Math.random() * fallbackQuotes.length)];
 }
 
+function getQuotedText(message) {
+    const quoted = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    return quoted?.conversation
+        || quoted?.extendedTextMessage?.text
+        || quoted?.imageMessage?.caption
+        || quoted?.videoMessage?.caption
+        || '';
+}
+
 function limitBio(value) {
     const bio = String(value || '').trim();
     if (bio.length <= 139)
@@ -125,8 +134,14 @@ export default {
                 return;
             }
 
+            if (action === 'preview') {
+                const template = settings.customBio || `{quote}\n\n${config.botName}`;
+                await send(`📝 *Bio preview*\n\n${limitBio(template.replaceAll('{quote}', getRandomQuote()))}`);
+                return;
+            }
+
             const bio = action === 'set'
-                ? args.slice(1).join(' ')
+                ? (args.slice(1).join(' ') || getQuotedText(message))
                 : args.join(' ');
             const savedBio = await saveBio(sock, bio, settings);
             await send(

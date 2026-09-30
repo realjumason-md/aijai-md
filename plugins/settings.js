@@ -73,7 +73,7 @@ export default {
         const aiEnabled = context.aiState?.isEnabled(chatId) === true;
         const lines = [
             `╭━━〔 ${context.config.botName || 'AIJAI-MD'} SETTINGS 〕━━╮`,
-            `┃ Mode: ${(context.config.commandMode || 'public').toUpperCase()}`,
+            `┃ Mode: ${(context.botMode || context.config.commandMode || 'public').toUpperCase()}`,
             `┃ Prefixes: ${(context.config.prefixes || [context.prefix || '.']).join(', ')}`,
             `┃ Timezone: ${context.config.timeZone || 'UTC'}`,
             `┃ Plugins: ${commandHandler.commands.size}`,

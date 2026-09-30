@@ -1,11 +1,25 @@
 import fs from 'fs';
 import path from 'node:path';
 import { dataFile } from '../lib/paths.js';
+import store from '../lib/lightweight_store.js';
 
 const configPath = dataFile('autoStatus.json');
+const HAS_DB = Boolean(
+    process.env.MONGO_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.MYSQL_URL ||
+    process.env.DB_URL
+);
 
-function readConfig() {
+async function readConfig() {
     try {
+        if (HAS_DB) {
+            const config = await store.getSetting('global', 'autoStatus');
+            return {
+                enabled: config?.enabled === true,
+                reactOn: config?.reactOn === true
+            };
+        }
         if (!fs.existsSync(configPath))
             return { enabled: false, reactOn: false };
         const config = JSON.parse(fs.readFileSync(configPath, 'utf8') || '{}');
@@ -16,7 +30,14 @@ function readConfig() {
     }
 }
 
-function writeConfig(config) {
+async function writeConfig(config) {
+    if (HAS_DB) {
+        await store.saveSetting('global', 'autoStatus', {
+            enabled: config.enabled === true,
+            reactOn: config.reactOn === true
+        });
+        return;
+    }
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
     fs.writeFileSync(configPath, JSON.stringify({
         enabled: config.enabled === true,
@@ -25,7 +46,7 @@ function writeConfig(config) {
 }
 
 async function reactToStatus(sock, statusKey) {
-    if (!statusKey?.id || !readConfig().reactOn)
+    if (!statusKey?.id || !(await readConfig()).reactOn)
         return;
     try {
         await sock.relayMessage('status@broadcast', {
@@ -50,7 +71,7 @@ async function reactToStatus(sock, statusKey) {
 }
 
 async function handleStatusUpdate(sock, status) {
-    if (!readConfig().enabled)
+    if (!(await readConfig()).enabled)
         return;
     await new Promise((resolve) => setTimeout(resolve, 1000));
     const statusKey = status?.messages?.[0]?.key
@@ -82,7 +103,7 @@ export default {
     usage: 'autostatus <on|off|react on|react off>',
     ownerOnly: true,
     async handler(sock, message, args, context) {
-        const config = readConfig();
+        const config = await readConfig();
         const subcommand = context.args[0]?.toLowerCase();
         const action = context.args[1]?.toLowerCase();
         if (!subcommand) {
@@ -98,7 +119,7 @@ export default {
         }
         if (subcommand === 'on' || subcommand === 'off') {
             config.enabled = subcommand === 'on';
-            writeConfig(config);
+            await writeConfig(config);
             await sock.sendMessage(context.jid, {
                 text: config.enabled
                     ? '✅ *Auto status view enabled!*\n\nBot will now automatically view all contact statuses.'
@@ -108,7 +129,7 @@ export default {
         }
         if (subcommand === 'react' && (action === 'on' || action === 'off')) {
             config.reactOn = action === 'on';
-            writeConfig(config);
+            await writeConfig(config);
             await sock.sendMessage(context.jid, {
                 text: config.reactOn
                     ? '💫 *Status reactions enabled!*\n\nBot will now react to status updates with 💚'

@@ -1,11 +1,23 @@
 import fs from 'fs';
 import path from 'node:path';
 import { dataFile } from '../lib/paths.js';
+import store from '../lib/lightweight_store.js';
+
+const HAS_DB = Boolean(
+    process.env.MONGO_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.MYSQL_URL ||
+    process.env.DB_URL
+);
 
 const statePath = dataFile('anticall.json');
 
-function readState() {
+async function readState() {
     try {
+        if (HAS_DB) {
+            const state = await store.getSetting('global', 'anticall');
+            return { enabled: state?.enabled === true };
+        }
         if (!fs.existsSync(statePath))
             return { enabled: false };
         const data = JSON.parse(fs.readFileSync(statePath, 'utf8') || '{}');
@@ -16,7 +28,11 @@ function readState() {
     }
 }
 
-function writeState(enabled) {
+async function writeState(enabled) {
+    if (HAS_DB) {
+        await store.saveSetting('global', 'anticall', { enabled: Boolean(enabled) });
+        return;
+    }
     fs.mkdirSync(path.dirname(statePath), { recursive: true });
     fs.writeFileSync(statePath, JSON.stringify({ enabled: !!enabled }, null, 2));
 }
@@ -29,8 +45,8 @@ export default {
     usage: 'anticall <on|off|status>',
     ownerOnly: true,
     async handler(sock, message, args, context) {
-        const state = readState();
-        const subcommand = context.args.join(' ').trim().toLowerCase();
+        const state = await readState();
+        const subcommand = args.join(' ').trim().toLowerCase();
         if (!['on', 'off', 'status'].includes(subcommand)) {
             await context.reply(
                 '*ANTICALL SETTINGS*\n\n📵 Auto-block incoming calls\n\n' +
@@ -50,7 +66,7 @@ export default {
             return;
         }
         const enabled = subcommand === 'on';
-        writeState(enabled);
+        await writeState(enabled);
         await context.reply(
             `📵 *Anticall ${enabled ? 'ENABLED' : 'DISABLED'}*\n\n` +
             `${enabled ? '✅ Incoming calls will now be rejected and blocked automatically.' : '❌ Incoming calls are now allowed.'}`
