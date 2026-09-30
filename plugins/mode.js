@@ -7,7 +7,7 @@ const MODES = {
     },
     private: {
         icon: '🔒',
-        description: 'Only the owner and sudo users can use the bot.'
+        description: 'Only the owner and sudo users can use the bot; other users are ignored silently.'
     },
     groups: {
         icon: '👥',
