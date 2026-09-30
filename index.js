@@ -26,7 +26,11 @@ import { aijaiState } from './lib/aijai-state.js';
 import commandHandler from './lib/commandHandler.js';
 import { DATA_DIR, SESSION_DIR, TEMP_DIR, storageConfigurationError } from './lib/paths.js';
 import { clearGithubSessionBackup, flushGithubSessionSync, restoreGithubSession, scheduleGithubSessionSync, verifyGithubSessionStorage } from './lib/session-storage.js';
-import { cacheMessageForAudit, handleAuditMessageUpdates } from './lib/message-audit.js';
+import {
+    cacheMessageForAudit,
+    handleAuditMessageUpdates,
+    prepareGroupAuditMessageCapture
+} from './lib/message-audit.js';
 const memoryRestartLimitMb = Number(process.env.MEMORY_RESTART_MB) || 0;
 const storageError = storageConfigurationError();
 if (storageError) {
@@ -379,8 +383,27 @@ async function startQasimDev() {
             try {
                 if (!chatUpdate.messages?.length)
                     return;
-                for (const message of chatUpdate.messages)
+                const groupsNotifiedThisBatch = new Set();
+                for (const message of chatUpdate.messages) {
+                    const chatId = message?.key?.remoteJid;
+                    if (chatId?.endsWith('@g.us')) {
+                        if (groupsNotifiedThisBatch.has(chatId))
+                            continue;
+                        try {
+                            const canCache = await prepareGroupAuditMessageCapture(QasimDev, chatId, config);
+                            if (!canCache) {
+                                groupsNotifiedThisBatch.add(chatId);
+                                continue;
+                            }
+                        }
+                        catch (err) {
+                            groupsNotifiedThisBatch.add(chatId);
+                            printLog('error', `Could not post group audit notice: ${err.message}`);
+                            continue;
+                        }
+                    }
                     cacheMessageForAudit(message, QasimDev);
+                }
                 const mek = chatUpdate.messages[0];
                 if (!mek.message)
                     return;
