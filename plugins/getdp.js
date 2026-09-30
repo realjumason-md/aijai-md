@@ -60,7 +60,21 @@ export default {
                     displayName = name;
             }
 
-            const profileUrl = await sock.profilePictureUrl(target, 'image');
+            let profileUrl;
+            let lastLookupError;
+            for (const type of ['image', 'preview']) {
+                try {
+                    profileUrl = await sock.profilePictureUrl(target, type, 15000);
+                    if (profileUrl)
+                        break;
+                }
+                catch (error) {
+                    lastLookupError = error;
+                }
+            }
+            if (!profileUrl)
+                throw lastLookupError || new Error('WhatsApp returned no profile picture URL.');
+
             await sock.sendMessage(
                 chatId,
                 {
