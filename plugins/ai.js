@@ -1,4 +1,4 @@
-import { generateAiReply, getImageInputs, hasAiProvider } from '../lib/aijai-ai.js';
+import { generateAiReply, getImageInputs, hasAiProvider, startHumanReplyDelay } from '../lib/aijai-ai.js';
 
 export default {
     command: 'ai',
@@ -18,10 +18,16 @@ export default {
             await context.reply(`AI is switched off. Use ${context.prefix}aiswitch groq.`);
             return;
         }
-        const reply = await generateAiReply({
-            text: prompt || 'Please look at this image and respond naturally.',
-            images
-        });
-        await context.reply(reply);
+        const finishHumanReply = startHumanReplyDelay(sock, context.jid);
+        try {
+            const reply = await generateAiReply({
+                text: prompt || 'Please look at this image and respond naturally.',
+                images
+            });
+            await finishHumanReply();
+            await context.reply(reply);
+        } finally {
+            await finishHumanReply();
+        }
     }
 };
