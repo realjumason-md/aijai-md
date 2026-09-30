@@ -1,3 +1,16 @@
+function normalizeJid(sock, jid) {
+    if (typeof jid !== 'string' || !jid)
+        return '';
+    const decoded = typeof sock.decodeJid === 'function' ? sock.decodeJid(jid) : jid;
+    return typeof decoded === 'string' ? decoded.replace(/:\d+(?=@)/, '') : jid;
+}
+
+function addCandidate(candidates, sock, jid) {
+    const normalized = normalizeJid(sock, jid);
+    if (normalized && !candidates.includes(normalized))
+        candidates.push(normalized);
+}
+
 export default {
     command: 'getdp',
     aliases: ['getpp', 'dlpp', 'profilepic'],
@@ -8,19 +21,11 @@ export default {
         const chatId = context.chatId || context.jid || message.key.remoteJid;
         const isGroup = chatId.endsWith('@g.us');
         const info = message.message?.extendedTextMessage?.contextInfo;
-        let target = chatId;
+        let target = normalizeJid(sock, chatId) || chatId;
         let displayName = isGroup ? 'Group' : 'User';
         let displayNumber = '';
 
-        if (info?.mentionedJid?.[0]) {
-            target = info.mentionedJid[0];
-            displayName = 'User';
-        }
-        else if (info?.participant) {
-            target = info.participant;
-            displayName = info.pushName || 'User';
-        }
-        else if (args[0]) {
+        if (args[0]) {
             const number = args[0].replace(/[^0-9]/g, '');
             if (number.length < 10) {
                 await sock.sendMessage(
@@ -33,30 +38,40 @@ export default {
             target = `${number}@s.whatsapp.net`;
             displayName = '';
         }
+        else if (info?.mentionedJid?.[0]) {
+            target = info.mentionedJid[0];
+            displayName = 'User';
+        }
+        else if (info?.participant) {
+            target = info.participant;
+            displayName = info.pushName || 'User';
+        }
 
         try {
             if (!target || typeof target !== 'string')
                 throw new Error('No valid WhatsApp user was found.');
+            target = normalizeJid(sock, target) || target;
+            const candidates = [];
+            addCandidate(candidates, sock, target);
+
             if (target.endsWith('@lid') && isGroup) {
-                const metadata = await sock.groupMetadata(chatId);
-                const participant = metadata.participants.find(
-                    (item) => item.lid === target || item.id === target
+                const metadata = await sock.groupMetadata(chatId).catch(() => null);
+                const participant = metadata?.participants?.find(
+                    (item) =>
+                        normalizeJid(sock, item.lid) === target ||
+                        normalizeJid(sock, item.id) === target
                 );
                 if (participant?.id)
-                    target = participant.id;
+                    addCandidate(candidates, sock, participant.id);
             }
-            else if (target.endsWith('@lid')) {
+            if (target.endsWith('@lid')) {
                 const getPNForLID = sock.signalRepository?.lidMapping?.getPNForLID;
                 if (typeof getPNForLID === 'function') {
                     const phoneJid = await getPNForLID.call(sock.signalRepository.lidMapping, target);
                     if (phoneJid)
-                        target = phoneJid;
+                        addCandidate(candidates, sock, phoneJid);
                 }
             }
-
-            const cleanNumber = target.replace(/@s\.whatsapp\.net|@lid/g, '').split(':')[0];
-            if ((target.endsWith('@s.whatsapp.net') || target.endsWith('@lid')) && cleanNumber.length >= 10)
-                displayNumber = `+${cleanNumber}`;
 
             if (target.endsWith('@g.us')) {
                 const metadata = await sock.groupMetadata(target).catch(() => null);
@@ -68,17 +83,25 @@ export default {
                     displayName = name;
             }
 
+            const cleanNumber = target.replace(/@s\.whatsapp\.net|@lid/g, '').split(':')[0];
+            if ((target.endsWith('@s.whatsapp.net') || target.endsWith('@lid')) && cleanNumber.length >= 10)
+                displayNumber = `+${cleanNumber}`;
+
             let profileUrl;
             let lastLookupError;
-            for (const type of ['image', 'preview']) {
-                try {
-                    profileUrl = await sock.profilePictureUrl(target, type, 15000);
-                    if (profileUrl)
-                        break;
+            for (const candidate of candidates) {
+                for (const type of ['image', 'preview']) {
+                    try {
+                        profileUrl = await sock.profilePictureUrl(candidate, type, 15000);
+                        if (profileUrl)
+                            break;
+                    }
+                    catch (error) {
+                        lastLookupError = error;
+                    }
                 }
-                catch (error) {
-                    lastLookupError = error;
-                }
+                if (profileUrl)
+                    break;
             }
             if (!profileUrl)
                 throw lastLookupError || new Error('WhatsApp returned no profile picture URL.');
@@ -98,7 +121,7 @@ export default {
             await sock.sendMessage(
                 chatId,
                 {
-                    text: `❌ No profile picture found${displayName ? ` for ${displayName}` : ''}.`,
+                    text: `❌ I couldn't access a profile picture${displayName ? ` for ${displayName}` : ''}.${displayNumber ? `\nNumber: ${displayNumber}` : ''}\nThe user may have hidden it in WhatsApp privacy settings, or WhatsApp may not have a photo available for this account.`,
                     ...(context.channelInfo || {})
                 },
                 { quoted: message }
