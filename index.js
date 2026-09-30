@@ -26,6 +26,7 @@ import { aijaiState } from './lib/aijai-state.js';
 import commandHandler from './lib/commandHandler.js';
 import { DATA_DIR, SESSION_DIR, TEMP_DIR, storageConfigurationError } from './lib/paths.js';
 import { clearGithubSessionBackup, flushGithubSessionSync, restoreGithubSession, scheduleGithubSessionSync, verifyGithubSessionStorage } from './lib/session-storage.js';
+import { cacheMessageForAudit, handleAuditMessageUpdates } from './lib/message-audit.js';
 const memoryRestartLimitMb = Number(process.env.MEMORY_RESTART_MB) || 0;
 const storageError = storageConfigurationError();
 if (storageError) {
@@ -376,6 +377,10 @@ async function startQasimDev() {
         store.bind(QasimDev.ev);
         QasimDev.ev.on('messages.upsert', async (chatUpdate) => {
             try {
+                if (!chatUpdate.messages?.length)
+                    return;
+                for (const message of chatUpdate.messages)
+                    cacheMessageForAudit(message, QasimDev);
                 const mek = chatUpdate.messages[0];
                 if (!mek.message)
                     return;
@@ -410,6 +415,14 @@ async function startQasimDev() {
             }
             catch (err) {
                 printLog('error', `Error in messages.upsert: ${err.message}`);
+            }
+        });
+        QasimDev.ev.on('messages.update', async (updates) => {
+            try {
+                await handleAuditMessageUpdates(QasimDev, updates, { store, config });
+            }
+            catch (err) {
+                printLog('error', `Error in message audit updates: ${err.message}`);
             }
         });
         QasimDev.decodeJid = (jid) => {
