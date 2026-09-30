@@ -7,6 +7,7 @@
     "start": "node --enable-source-maps index.js",
     "start:optimized": "node --max-old-space-size=512 --optimize-for-size --gc-interval=100 index.js",
     "build": "for f in index.js config.js lib/*.js plugins/*.js; do node --check \"$f\"; done",
+    "test": "node --test tests/*.test.js",
     "dev": "NODE_ENV=development node index.js",
     "lint": "eslint . --ext .js"
   },
