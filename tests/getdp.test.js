@@ -51,6 +51,57 @@ test('getdp retries a private-chat LID using its mapped phone JID', async () => 
     assert.equal(sent[0].image.url, 'https://example.test/profile.jpg');
 });
 
+test('getdp uses the phone-number alternate JID for a direct chat', async () => {
+    const lookedUp = [];
+    const { socket, sent } = makeSocket({
+        profilePictureUrl: async (jid) => {
+            lookedUp.push(jid);
+            if (jid === phoneJid)
+                return 'https://example.test/alternate-jid.jpg';
+            throw new Error('profile picture not available for this JID');
+        }
+    });
+    const message = {
+        key: { remoteJid: lid, remoteJidAlt: phoneJid },
+        message: { extendedTextMessage: { text: '.getpp' } }
+    };
+
+    await getdp.handler(socket, message, [], {
+        chatId: lid,
+        prefix: '.'
+    });
+
+    assert.equal(lookedUp[0], phoneJid);
+    assert.equal(sent[0].image.url, 'https://example.test/alternate-jid.jpg');
+});
+
+test('getdp uses participantAlt when replying to a LID in a group', async () => {
+    const groupJid = '12345-67890@g.us';
+    const { socket, sent } = makeSocket({
+        profilePictureUrl: async (jid) => {
+            if (jid === phoneJid)
+                return 'https://example.test/quoted-alt.jpg';
+            throw new Error('profile picture not available for this JID');
+        }
+    });
+    const message = {
+        key: { remoteJid: groupJid },
+        message: {
+            extendedTextMessage: {
+                text: '.getdp',
+                contextInfo: { participant: lid, participantAlt: phoneJid }
+            }
+        }
+    };
+
+    await getdp.handler(socket, message, [], {
+        chatId: groupJid,
+        prefix: '.'
+    });
+
+    assert.equal(sent[0].image.url, 'https://example.test/quoted-alt.jpg');
+});
+
 test('getdp resolves a mentioned LID to its phone JID in a group', async () => {
     const groupJid = '12345-67890@g.us';
     const { socket, sent } = makeSocket({
@@ -93,6 +144,6 @@ test('getdp explains when WhatsApp does not make a photo available', async () =>
         prefix: '.'
     });
 
-    assert.match(sent[0].text, /privacy settings/i);
-    assert.match(sent[0].text, /photo available/i);
+    assert.match(sent[0].text, /didn't return a profile picture/i);
+    assert.match(sent[0].text, /country code/i);
 });

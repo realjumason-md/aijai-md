@@ -11,6 +11,14 @@ function addCandidate(candidates, sock, jid) {
         candidates.push(normalized);
 }
 
+function preferPhoneJid(primary, alternate) {
+    if (typeof primary === 'string' && primary.endsWith('@s.whatsapp.net'))
+        return primary;
+    if (typeof alternate === 'string' && alternate.endsWith('@s.whatsapp.net'))
+        return alternate;
+    return primary || alternate || '';
+}
+
 export default {
     command: 'getdp',
     aliases: ['getpp', 'dlpp', 'profilepic'],
@@ -24,6 +32,7 @@ export default {
         let target = normalizeJid(sock, chatId) || chatId;
         let displayName = isGroup ? 'Group' : 'User';
         let displayNumber = '';
+        let useDefaultDirectTarget = !isGroup && !args[0] && !info?.mentionedJid?.[0] && !info?.participant;
 
         if (args[0]) {
             const number = args[0].replace(/[^0-9]/g, '');
@@ -43,8 +52,11 @@ export default {
             displayName = 'User';
         }
         else if (info?.participant) {
-            target = info.participant;
+            target = preferPhoneJid(info.participant, info.participantAlt);
             displayName = info.pushName || 'User';
+        }
+        else if (useDefaultDirectTarget) {
+            target = preferPhoneJid(message.key?.remoteJid || chatId, message.key?.remoteJidAlt);
         }
 
         try {
@@ -53,6 +65,10 @@ export default {
             target = normalizeJid(sock, target) || target;
             const candidates = [];
             addCandidate(candidates, sock, target);
+            if (useDefaultDirectTarget) {
+                addCandidate(candidates, sock, message.key?.remoteJid);
+                addCandidate(candidates, sock, message.key?.remoteJidAlt);
+            }
 
             if (target.endsWith('@lid') && isGroup) {
                 const metadata = await sock.groupMetadata(chatId).catch(() => null);
@@ -121,7 +137,7 @@ export default {
             await sock.sendMessage(
                 chatId,
                 {
-                    text: `❌ I couldn't access a profile picture${displayName ? ` for ${displayName}` : ''}.${displayNumber ? `\nNumber: ${displayNumber}` : ''}\nThe user may have hidden it in WhatsApp privacy settings, or WhatsApp may not have a photo available for this account.`,
+                    text: `❌ WhatsApp didn't return a profile picture${displayName ? ` for ${displayName}` : ''}.${displayNumber ? `\nNumber: ${displayNumber}` : ''}\nIf this is a direct chat, try ${context.prefix}getdp followed by the number with its country code.`,
                     ...(context.channelInfo || {})
                 },
                 { quoted: message }
