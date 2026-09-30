@@ -23,7 +23,7 @@ const MODES = {
     }
 };
 
-function statusText(mode) {
+function statusText(mode, prefix) {
     const current = MODES[mode] ? mode : 'public';
     const lines = [
         '📊 *BOT MODE STATUS*',
@@ -38,7 +38,11 @@ function statusText(mode) {
         lines.push(`${name === current ? '✓ ' : ''}${details.icon} \`${name}\` — ${details.description}`);
     }
 
-    lines.push('', `Use ${'${prefix}'}mode <public|private|groups|inbox|self> to change it.`);
+    lines.push(
+        '',
+        `Use ${prefix}mode <public|private|groups|inbox|self> to change it.`,
+        `Use ${prefix}mode status to check the current mode.`
+    );
     return lines.join('\n');
 }
 
@@ -55,7 +59,7 @@ export default {
         const current = await store.getBotMode();
 
         if (!requested || requested === 'status' || requested === 'check') {
-            await context.reply(statusText(current).replace('${prefix}', context.prefix || '.'));
+            await context.reply(statusText(current, context.prefix || '.'));
             return;
         }
 
