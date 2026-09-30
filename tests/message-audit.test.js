@@ -12,6 +12,7 @@ const {
     formatAuditNotice,
     getAuditFeatureEnabled,
     handleAuditMessageUpdates,
+    handleAuditMessageUpserts,
     markGroupAuditNoticeSent,
     prepareGroupAuditMessageCapture,
     setAuditFeatureEnabled
@@ -172,4 +173,93 @@ test('posts a notice once before tracking messages in a group', async () => {
     assert.equal(await prepareGroupAuditMessageCapture(sock, group, { prefixes: ['.'] }), false);
     markGroupAuditNoticeSent(group, 'antidelete');
     setAuditFeatureEnabled('antidelete', false);
+});
+
+test('captures group revoke protocol messages from messages.upsert', async () => {
+    const group = '120363000000000003@g.us';
+    const sender = '256700000001@s.whatsapp.net';
+    const actor = '256700000002@s.whatsapp.net';
+    const owner = '256700000003@s.whatsapp.net';
+    const sent = [];
+    const sock = {
+        user: { id: '256700000004@s.whatsapp.net' },
+        getName: async (jid) => jid === group ? 'Garden group' : jid,
+        sendMessage: async (jid, content) => sent.push({ jid, content })
+    };
+
+    setAuditFeatureEnabled('antidelete', true);
+    cacheMessageForAudit({
+        key: { remoteJid: group, id: 'group-original', participant: sender },
+        message: { conversation: 'message removed in the group' },
+        messageTimestamp: 1_790_741_400
+    }, sock);
+
+    await handleAuditMessageUpserts(sock, [{
+        key: { remoteJid: group, id: 'revoke-event', participant: actor },
+        message: {
+            protocolMessage: {
+                key: { remoteJid: group, id: 'group-original' },
+                type: 0
+            }
+        },
+        messageTimestamp: 1_790_741_500
+    }], {
+        store: { loadMessage: async () => null },
+        config: { ownerNumber: owner.replace(/\D/g, ''), timeZone: 'Africa/Kampala' }
+    });
+
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].jid, owner);
+    assert.match(sent[0].content.text, /DELETED TEXT MESSAGE/);
+    assert.match(sent[0].content.text, /Garden group/);
+    assert.match(sent[0].content.text, /256700000001/);
+    assert.match(sent[0].content.text, /message removed in the group/);
+    assert.match(sent[0].content.text, /256700000002/);
+
+    setAuditFeatureEnabled('antidelete', false);
+});
+
+test('captures edited group text from protocol messages in messages.upsert', async () => {
+    const group = '120363000000000004@g.us';
+    const sender = '256700000001@s.whatsapp.net';
+    const actor = '256700000002@s.whatsapp.net';
+    const owner = '256700000003@s.whatsapp.net';
+    const sent = [];
+    const sock = {
+        user: { id: '256700000004@s.whatsapp.net' },
+        getName: async (jid) => jid === group ? 'Garden group' : jid,
+        sendMessage: async (jid, content) => sent.push({ jid, content })
+    };
+
+    setAuditFeatureEnabled('antiedit', true);
+    cacheMessageForAudit({
+        key: { remoteJid: group, id: 'group-edit-original', participant: sender },
+        message: { conversation: 'before the group edit' },
+        messageTimestamp: 1_790_741_400
+    }, sock);
+
+    await handleAuditMessageUpserts(sock, [{
+        key: { remoteJid: group, id: 'edit-event', participant: actor },
+        message: {
+            protocolMessage: {
+                key: { remoteJid: group, id: 'group-edit-original' },
+                type: 14,
+                editedMessage: { conversation: 'after the group edit' }
+            }
+        },
+        messageTimestamp: 1_790_741_500
+    }], {
+        store: { loadMessage: async () => null },
+        config: { ownerNumber: owner.replace(/\D/g, ''), timeZone: 'Africa/Kampala' }
+    });
+
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].jid, owner);
+    assert.match(sent[0].content.text, /EDITED TEXT MESSAGE/);
+    assert.match(sent[0].content.text, /Garden group/);
+    assert.match(sent[0].content.text, /before the group edit/);
+    assert.match(sent[0].content.text, /after the group edit/);
+    assert.match(sent[0].content.text, /256700000002/);
+
+    setAuditFeatureEnabled('antiedit', false);
 });
