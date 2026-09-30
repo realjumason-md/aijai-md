@@ -22,7 +22,8 @@ export default {
         try {
             const reply = await generateAiReply({
                 text: prompt || 'Please look at this image and respond naturally.',
-                images
+                images,
+                conversationId: context.jid
             });
             await finishHumanReply();
             await context.reply(reply);
