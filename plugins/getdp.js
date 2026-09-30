@@ -8,15 +8,15 @@ export default {
         const chatId = context.chatId || context.jid || message.key.remoteJid;
         const isGroup = chatId.endsWith('@g.us');
         const info = message.message?.extendedTextMessage?.contextInfo;
-        let target = sock.user?.id || chatId;
-        let displayName = 'Bot';
+        let target = chatId;
+        let displayName = isGroup ? 'Group' : 'User';
         let displayNumber = '';
 
         if (info?.mentionedJid?.[0]) {
             target = info.mentionedJid[0];
             displayName = 'User';
         }
-        else if (info?.participant || info?.remoteJid) {
+        else if (info?.quotedMessage && (info?.participant || info?.remoteJid)) {
             target = info.participant || info.remoteJid;
             displayName = info.pushName || 'User';
         }
@@ -47,10 +47,14 @@ export default {
             }
 
             const cleanNumber = target.replace(/@s\.whatsapp\.net|@lid/g, '').split(':')[0];
-            if (cleanNumber.length >= 10)
+            if ((target.endsWith('@s.whatsapp.net') || target.endsWith('@lid')) && cleanNumber.length >= 10)
                 displayNumber = `+${cleanNumber}`;
 
-            if (displayName === 'User' && typeof sock.getName === 'function') {
+            if (target.endsWith('@g.us')) {
+                const metadata = await sock.groupMetadata(target).catch(() => null);
+                displayName = metadata?.subject || 'Group';
+            }
+            else if (displayName === 'User' && typeof sock.getName === 'function') {
                 const name = await sock.getName(target).catch(() => '');
                 if (name && !name.startsWith('+'))
                     displayName = name;
