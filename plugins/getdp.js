@@ -16,8 +16,8 @@ export default {
             target = info.mentionedJid[0];
             displayName = 'User';
         }
-        else if (info?.quotedMessage && (info?.participant || info?.remoteJid)) {
-            target = info.participant || info.remoteJid;
+        else if (info?.participant) {
+            target = info.participant;
             displayName = info.pushName || 'User';
         }
         else if (args[0]) {
@@ -44,6 +44,14 @@ export default {
                 );
                 if (participant?.id)
                     target = participant.id;
+            }
+            else if (target.endsWith('@lid')) {
+                const getPNForLID = sock.signalRepository?.lidMapping?.getPNForLID;
+                if (typeof getPNForLID === 'function') {
+                    const phoneJid = await getPNForLID.call(sock.signalRepository.lidMapping, target);
+                    if (phoneJid)
+                        target = phoneJid;
+                }
             }
 
             const cleanNumber = target.replace(/@s\.whatsapp\.net|@lid/g, '').split(':')[0];
@@ -86,6 +94,7 @@ export default {
             );
         }
         catch (error) {
+            console.error(`[getpp] Failed for target ${target}:`, error?.message || error);
             await sock.sendMessage(
                 chatId,
                 {
