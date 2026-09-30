@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { getChatbot } from '../lib/index.js';
 import store from '../lib/lightweight_store.js';
 import commandHandler from '../lib/commandHandler.js';
 import { dataFile } from '../lib/paths.js';
@@ -93,6 +94,13 @@ export default {
         ];
 
         if (context.isGroup) {
+            let groupChatbot = null;
+            try {
+                groupChatbot = await getChatbot(chatId);
+            }
+            catch {
+                groupChatbot = null;
+            }
             let groupSettings = {};
             try {
                 groupSettings = await store.getAllSettings(chatId) || {};
@@ -103,6 +111,7 @@ export default {
             const groupKeys = Object.keys(groupSettings);
             lines.push(
                 `┣━━〔 GROUP 〕━━━━━━━━━━━━┫`,
+                `┃ Group chatbot: ${groupChatbot?.enabled === true ? '✅ ON' : '❌ OFF'}`,
                 `┃ Saved settings: ${groupKeys.length}`,
                 ...(groupKeys.length
                     ? groupKeys.slice(0, 8).map((key) => `┃ ${key}: ${status(groupSettings[key])}`)

@@ -100,13 +100,13 @@ export default {
     aliases: ['autoview', 'statusview'],
     category: 'owner',
     description: 'Automatically view and react to WhatsApp statuses',
-    usage: 'autostatus <on|off|react on|react off>',
+    usage: 'autostatus <status|on|off|react on|react off>',
     ownerOnly: true,
     async handler(sock, message, args, context) {
         const config = await readConfig();
         const subcommand = context.args[0]?.toLowerCase();
         const action = context.args[1]?.toLowerCase();
-        if (!subcommand) {
+        if (!subcommand || subcommand === 'status') {
             await sock.sendMessage(context.jid, {
                 text: `🔄 *Auto Status Settings*\n\n📱 *Auto Status View:* ${config.enabled ? '✅ Enabled' : '❌ Disabled'}\n` +
                     `💫 *Status Reactions:* ${config.reactOn ? '✅ Enabled' : '❌ Disabled'}\n\n` +

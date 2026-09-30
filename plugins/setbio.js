@@ -7,11 +7,43 @@ const fallbackQuotes = [
     'Believe in yourself and keep moving forward.',
     'Small steps every day lead to big results.'
 ];
+const quoteSources = [
+    'https://raw.githubusercontent.com/GlobalTechInfo/Islamic-Database/main/text/random_quotes.txt',
+    'https://raw.githubusercontent.com/GlobalTechInfo/Islamic-Database/main/text/motivational_quotes.txt',
+    'https://raw.githubusercontent.com/GlobalTechInfo/Islamic-Database/main/text/pickup_quotes.txt'
+];
 
 let autoBioInterval = null;
+let cachedQuotes = [];
+let quoteLoadPromise = null;
 
-function getRandomQuote() {
-    return fallbackQuotes[Math.floor(Math.random() * fallbackQuotes.length)];
+async function fetchQuotes() {
+    if (cachedQuotes.length)
+        return cachedQuotes;
+    if (quoteLoadPromise)
+        return quoteLoadPromise;
+
+    quoteLoadPromise = Promise.allSettled(quoteSources.map(async (url) => {
+        const response = await fetch(url, { signal: AbortSignal.timeout(3500) });
+        if (!response.ok)
+            return [];
+        const body = await response.text();
+        return body
+            .split(/\r?\n/)
+            .map((quote) => quote.trim())
+            .filter((quote) => quote.length > 0 && quote.length <= 139);
+    })).then((results) => {
+        cachedQuotes = results.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
+        return cachedQuotes.length ? cachedQuotes : fallbackQuotes;
+    }).finally(() => {
+        quoteLoadPromise = null;
+    });
+
+    return quoteLoadPromise;
+}
+
+function getRandomQuote(quotes = cachedQuotes.length ? cachedQuotes : fallbackQuotes) {
+    return quotes[Math.floor(Math.random() * quotes.length)];
 }
 
 function getQuotedText(message) {
@@ -42,7 +74,7 @@ async function updateAutoBio(sock) {
         const settings = await getAutoBioSettings();
         if (!settings.enabled)
             return;
-        const quote = getRandomQuote();
+        const quote = getRandomQuote(await fetchQuotes());
         const template = settings.customBio || `{quote}\n\n${config.botName}`;
         const bio = limitBio(template.replaceAll('{quote}', quote));
         await sock.updateProfileStatus(bio);
@@ -72,7 +104,8 @@ async function saveBio(sock, bio, settings) {
         throw new Error('Please provide bio text.');
     settings.customBio = customBio;
     await store.saveSetting('global', 'autoBio', settings);
-    await sock.updateProfileStatus(customBio.replaceAll('{quote}', getRandomQuote()));
+    const quote = getRandomQuote(await fetchQuotes());
+    await sock.updateProfileStatus(customBio.replaceAll('{quote}', quote));
     return customBio;
 }
 
@@ -135,8 +168,9 @@ export default {
             }
 
             if (action === 'preview') {
+                const quote = getRandomQuote(await fetchQuotes());
                 const template = settings.customBio || `{quote}\n\n${config.botName}`;
-                await send(`📝 *Bio preview*\n\n${limitBio(template.replaceAll('{quote}', getRandomQuote()))}`);
+                await send(`📝 *Bio preview*\n\n${limitBio(template.replaceAll('{quote}', quote))}`);
                 return;
             }
 

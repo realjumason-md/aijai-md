@@ -9,13 +9,33 @@ async function toBuffer(stream) {
 
 function getQuotedViewOnceMessage(message) {
     const quoted = message?.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-    const viewOnce = quoted?.viewOnceMessage?.message
-        || quoted?.viewOnceMessageV2?.message
-        || quoted?.viewOnceMessageV2Extension?.message;
-    if (viewOnce?.imageMessage)
-        return { kind: 'image', message: viewOnce.imageMessage };
-    if (viewOnce?.videoMessage)
-        return { kind: 'video', message: viewOnce.videoMessage };
+    let current = quoted;
+    let foundViewOnceWrapper = false;
+
+    for (let depth = 0; current && depth < 5; depth += 1) {
+        const nestedContent = current.ephemeralMessage?.message
+            || current.documentWithCaptionMessage?.message;
+        if (nestedContent) {
+            current = nestedContent;
+            continue;
+        }
+
+        const viewOnce = current.viewOnceMessage?.message
+            || current.viewOnceMessageV2?.message
+            || current.viewOnceMessageV2Extension?.message;
+        if (viewOnce) {
+            foundViewOnceWrapper = true;
+            current = viewOnce;
+            continue;
+        }
+
+        if (current.imageMessage && (foundViewOnceWrapper || current.imageMessage.viewOnce))
+            return { kind: 'image', message: current.imageMessage };
+        if (current.videoMessage && (foundViewOnceWrapper || current.videoMessage.viewOnce))
+            return { kind: 'video', message: current.videoMessage };
+        return undefined;
+    }
+
     return undefined;
 }
 
@@ -31,16 +51,21 @@ export default {
             await context.reply(`Reply to a view-once image or video with ${context.prefix}viewonce.`);
             return;
         }
-        const stream = await downloadContentFromMessage(media.message, media.kind);
-        const buffer = await toBuffer(stream);
-        if (media.kind === 'image') {
-            await sock.sendMessage(context.jid, { image: buffer, caption: 'View-once media revealed.' }, { quoted: message });
-            return;
+        try {
+            const stream = await downloadContentFromMessage(media.message, media.kind);
+            const buffer = await toBuffer(stream);
+            const chatId = context.chatId || context.jid || message.key.remoteJid;
+            if (media.kind === 'image') {
+                await sock.sendMessage(chatId, { image: buffer, caption: 'View-once media revealed.' }, { quoted: message });
+                return;
+            }
+            await sock.sendMessage(
+                chatId,
+                { video: buffer, mimetype: media.message.mimetype || 'video/mp4', caption: 'View-once media revealed.' },
+                { quoted: message }
+            );
+        } catch (error) {
+            await context.reply(`Could not retrieve that view-once media: ${error.message}`);
         }
-        await sock.sendMessage(
-            context.jid,
-            { video: buffer, mimetype: media.message.mimetype || 'video/mp4', caption: 'View-once media revealed.' },
-            { quoted: message }
-        );
     }
 };
