@@ -29,6 +29,7 @@ import { clearGithubSessionBackup, flushGithubSessionSync, restoreGithubSession,
 import {
     cacheMessageForAudit,
     handleAuditMessageUpdates,
+    handleAuditMessageUpserts,
     prepareGroupAuditMessageCapture
 } from './lib/message-audit.js';
 const memoryRestartLimitMb = Number(process.env.MEMORY_RESTART_MB) || 0;
@@ -384,6 +385,7 @@ async function startQasimDev() {
                 if (!chatUpdate.messages?.length)
                     return;
                 const groupsNotifiedThisBatch = new Set();
+                const auditEligibleMessages = [];
                 for (const message of chatUpdate.messages) {
                     const chatId = message?.key?.remoteJid;
                     if (chatId?.endsWith('@g.us')) {
@@ -403,6 +405,10 @@ async function startQasimDev() {
                         }
                     }
                     cacheMessageForAudit(message, QasimDev);
+                    auditEligibleMessages.push(message);
+                }
+                if (chatUpdate.type === 'notify') {
+                    await handleAuditMessageUpserts(QasimDev, auditEligibleMessages, { store, config });
                 }
                 const mek = chatUpdate.messages[0];
                 if (!mek.message)
