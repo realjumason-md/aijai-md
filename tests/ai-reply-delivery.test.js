@@ -30,6 +30,20 @@ test('splits long replies into roughly 30-word messages', () => {
     assert.deepEqual(parts.join(' ').split(/\s+/u), words);
 });
 
+test('keeps sentence-boundary splits at or below 30 words', () => {
+    const words = numberedWords(95);
+    const sentences = [];
+    for (let index = 0; index < words.length; index += 35) {
+        sentences.push(`${words.slice(index, index + 35).join(' ')}.`);
+    }
+    const reply = sentences.join(' ');
+    const parts = splitAiReply(reply);
+
+    assert.equal(parts.length, 4);
+    assert.ok(parts.every((part) => part.split(/\s+/u).length <= 30));
+    assert.equal(parts.join(' '), reply);
+});
+
 test('prefers sentence boundaries when splitting', () => {
     const firstSentence = numberedWords(17).join(' ');
     const secondSentence = numberedWords(17).slice(17).concat(numberedWords(34).slice(17)).join(' ');
