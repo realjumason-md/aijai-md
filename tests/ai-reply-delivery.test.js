@@ -55,9 +55,10 @@ test('prefers sentence boundaries when splitting', () => {
     assert.equal(`${parts[0]} ${parts[1]}`, reply);
 });
 
-test('shows typing for 7-8 seconds between every part and pauses after the final part', async () => {
+test('keeps typing active for 7-8 seconds between every part and pauses after the final part', async () => {
     const events = [];
     const words = numberedWords(95);
+    let fakeNow = 0;
     const parts = await sendAiReplyInParts(
         {
             sendPresenceUpdate: async (state, jid) => events.push(`presence:${state}:${jid}`)
@@ -65,7 +66,13 @@ test('shows typing for 7-8 seconds between every part and pauses after the final
         'chat-id',
         words.join(' '),
         async (part) => events.push(`message:${part}`),
-        { wait: async (ms) => events.push(`wait:${ms}`) }
+        {
+            wait: async (ms) => {
+                events.push(`wait:${ms}`);
+                fakeNow += ms;
+            },
+            now: () => fakeNow
+        }
     );
 
     assert.equal(parts.length, 4);
@@ -73,11 +80,23 @@ test('shows typing for 7-8 seconds between every part and pauses after the final
     let eventIndex = 1;
     for (let partIndex = 1; partIndex < parts.length; partIndex += 1) {
         assert.equal(events[eventIndex++], 'presence:composing:chat-id');
-        const waitEvent = events[eventIndex++];
-        assert.match(waitEvent, /^wait:/u);
-        const delayMs = Number(waitEvent.slice('wait:'.length));
-        assert.ok(Number.isInteger(delayMs));
-        assert.ok(delayMs >= 7000 && delayMs <= 8000, `Expected 7-8 seconds, got ${delayMs}ms`);
+        let totalWaitMs = 0;
+        let refreshCount = 0;
+        while (events[eventIndex]?.startsWith('wait:')) {
+            const waitEvent = events[eventIndex++];
+            const waitMs = Number(waitEvent.slice('wait:'.length));
+            assert.ok(Number.isInteger(waitMs));
+            totalWaitMs += waitMs;
+            if (events[eventIndex] === 'presence:composing:chat-id') {
+                refreshCount += 1;
+                eventIndex += 1;
+            }
+        }
+        assert.ok(
+            totalWaitMs >= 7000 && totalWaitMs <= 8000,
+            `Expected 7-8 seconds, got ${totalWaitMs}ms`
+        );
+        assert.ok(refreshCount >= 2, `Expected typing refreshes during the wait, got ${refreshCount}`);
         assert.equal(events[eventIndex++], `message:${parts[partIndex]}`);
     }
     assert.equal(events[eventIndex], 'presence:paused:chat-id');
@@ -102,12 +121,18 @@ test('splits long automatic replies into parts of no more than 30 words', async 
     const sent = [];
     const words = numberedWords(95);
     const reply = words.join(' ');
+    let fakeNow = 0;
     const parts = await sendAutomaticAiReply(
         {},
         'chat-id',
         reply,
         async (part) => sent.push(part),
-        { wait: async () => {} }
+        {
+            wait: async (ms) => {
+                fakeNow += ms;
+            },
+            now: () => fakeNow
+        }
     );
 
     assert.equal(parts.length, 4);
