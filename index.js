@@ -633,6 +633,13 @@ async function startQasimDev() {
                 const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
                 if (activeSocket !== QasimDev)
                     return;
+                const disconnectMessage = typeof lastDisconnect?.error?.message === 'string'
+                    ? lastDisconnect.error.message.replace(/\s+/g, ' ').slice(0, 240)
+                    : '';
+                printLog(
+                    'warning',
+                    `WhatsApp socket closed (status ${statusCode ?? 'unknown'})${disconnectMessage ? `: ${disconnectMessage}` : ''}`
+                );
                 activeSocket = null;
                 registerPairingHandler(null);
                 updatePairingState({
