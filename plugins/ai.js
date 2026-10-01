@@ -1,4 +1,5 @@
 import { generateAiReply, getImageInputs, hasAiProvider, startHumanReplyDelay } from '../lib/aijai-ai.js';
+import { sendAiReplyInParts } from '../lib/ai-reply-delivery.js';
 
 export default {
     command: 'ai',
@@ -26,7 +27,12 @@ export default {
                 conversationId: context.jid
             });
             await finishHumanReply();
-            await context.reply(reply);
+            await sendAiReplyInParts(
+                sock,
+                context.jid,
+                reply,
+                (part) => context.reply(part)
+            );
         } finally {
             await finishHumanReply();
         }
