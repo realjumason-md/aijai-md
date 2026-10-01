@@ -55,7 +55,7 @@ test('prefers sentence boundaries when splitting', () => {
     assert.equal(`${parts[0]} ${parts[1]}`, reply);
 });
 
-test('shows typing for 4-6 seconds between every part and pauses after the final part', async () => {
+test('shows typing for 7-8 seconds between every part and pauses after the final part', async () => {
     const events = [];
     const words = numberedWords(95);
     const parts = await sendAiReplyInParts(
@@ -77,7 +77,7 @@ test('shows typing for 4-6 seconds between every part and pauses after the final
         assert.match(waitEvent, /^wait:/u);
         const delayMs = Number(waitEvent.slice('wait:'.length));
         assert.ok(Number.isInteger(delayMs));
-        assert.ok(delayMs >= 4000 && delayMs <= 6000, `Expected 4-6 seconds, got ${delayMs}ms`);
+        assert.ok(delayMs >= 7000 && delayMs <= 8000, `Expected 7-8 seconds, got ${delayMs}ms`);
         assert.equal(events[eventIndex++], `message:${parts[partIndex]}`);
     }
     assert.equal(events[eventIndex], 'presence:paused:chat-id');
