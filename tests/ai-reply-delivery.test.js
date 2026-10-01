@@ -58,7 +58,6 @@ test('prefers sentence boundaries when splitting', () => {
 
 test('waits 5 seconds before showing typing on an incoming reply', async () => {
     const events = [];
-    let fakeNow = 0;
     const finishHumanReply = startHumanReplyDelay(
         {
             sendPresenceUpdate: async (state, jid) => events.push(`presence:${state}:${jid}`)
@@ -67,14 +66,12 @@ test('waits 5 seconds before showing typing on an incoming reply', async () => {
         {
             wait: async (ms) => {
                 events.push(`wait:${ms}`);
-                fakeNow += ms;
             },
-            now: () => fakeNow,
             random: () => 0
         }
     );
 
-    assert.deepEqual(events, ['wait:5000']);
+    assert.deepEqual(events, []);
     await finishHumanReply();
     assert.deepEqual(events, [
         'wait:5000',
