@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { sendAiReplyInParts, splitAiReply } from '../lib/ai-reply-delivery.js';
+import { sendAiReplyInParts, sendAutomaticAiReply, splitAiReply } from '../lib/ai-reply-delivery.js';
 
 function numberedWords(count) {
     return Array.from({ length: count }, (_, index) => `word${index + 1}`);
@@ -74,4 +74,37 @@ test('shows typing between message parts and pauses after the final part', async
     assert.match(events[2], /^wait:/u);
     assert.equal(events[3], `message:${parts[1]}`);
     assert.equal(events[4], 'presence:paused:chat-id');
+});
+
+test('keeps short automatic replies on the original single-send path', async () => {
+    const sent = [];
+    const reply = 'Hello there!';
+
+    const parts = await sendAutomaticAiReply(
+        {},
+        'chat-id',
+        reply,
+        async (part) => sent.push(part)
+    );
+
+    assert.deepEqual(parts, [reply]);
+    assert.deepEqual(sent, [reply]);
+});
+
+test('splits long automatic replies into parts of no more than 30 words', async () => {
+    const sent = [];
+    const words = numberedWords(95);
+    const reply = words.join(' ');
+    const parts = await sendAutomaticAiReply(
+        {},
+        'chat-id',
+        reply,
+        async (part) => sent.push(part),
+        { wait: async () => {} }
+    );
+
+    assert.equal(parts.length, 4);
+    assert.deepEqual(sent, parts);
+    assert.ok(parts.every((part) => part.split(/\s+/u).length <= 30));
+    assert.deepEqual(parts.join(' ').split(/\s+/u), words);
 });
