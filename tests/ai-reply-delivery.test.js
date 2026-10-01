@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { sendAiReplyInParts, sendAutomaticAiReply, splitAiReply } from '../lib/ai-reply-delivery.js';
+import { startHumanReplyDelay } from '../lib/human-reply-delay.js';
 
 function numberedWords(count) {
     return Array.from({ length: count }, (_, index) => `word${index + 1}`);
@@ -55,7 +56,35 @@ test('prefers sentence boundaries when splitting', () => {
     assert.equal(`${parts[0]} ${parts[1]}`, reply);
 });
 
-test('keeps typing active for 7-8 seconds between every part and pauses after the final part', async () => {
+test('waits 5 seconds before showing typing on an incoming reply', async () => {
+    const events = [];
+    let fakeNow = 0;
+    const finishHumanReply = startHumanReplyDelay(
+        {
+            sendPresenceUpdate: async (state, jid) => events.push(`presence:${state}:${jid}`)
+        },
+        'chat-id',
+        {
+            wait: async (ms) => {
+                events.push(`wait:${ms}`);
+                fakeNow += ms;
+            },
+            now: () => fakeNow,
+            random: () => 0
+        }
+    );
+
+    assert.deepEqual(events, ['wait:5000']);
+    await finishHumanReply();
+    assert.deepEqual(events, [
+        'wait:5000',
+        'presence:composing:chat-id',
+        'wait:3000',
+        'presence:paused:chat-id'
+    ]);
+});
+
+test('waits 5 seconds before typing and keeps it active for 7-8 seconds between parts', async () => {
     const events = [];
     const words = numberedWords(95);
     let fakeNow = 0;
@@ -79,6 +108,7 @@ test('keeps typing active for 7-8 seconds between every part and pauses after th
     assert.equal(events[0], `message:${parts[0]}`);
     let eventIndex = 1;
     for (let partIndex = 1; partIndex < parts.length; partIndex += 1) {
+        assert.equal(events[eventIndex++], 'wait:5000');
         assert.equal(events[eventIndex++], 'presence:composing:chat-id');
         let totalWaitMs = 0;
         let refreshCount = 0;
