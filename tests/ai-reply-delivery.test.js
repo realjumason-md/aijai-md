@@ -55,9 +55,9 @@ test('prefers sentence boundaries when splitting', () => {
     assert.equal(`${parts[0]} ${parts[1]}`, reply);
 });
 
-test('shows typing between message parts and pauses after the final part', async () => {
+test('shows typing for 4-6 seconds between every part and pauses after the final part', async () => {
     const events = [];
-    const words = numberedWords(31);
+    const words = numberedWords(95);
     const parts = await sendAiReplyInParts(
         {
             sendPresenceUpdate: async (state, jid) => events.push(`presence:${state}:${jid}`)
@@ -68,12 +68,19 @@ test('shows typing between message parts and pauses after the final part', async
         { wait: async (ms) => events.push(`wait:${ms}`) }
     );
 
-    assert.equal(parts.length, 2);
+    assert.equal(parts.length, 4);
     assert.equal(events[0], `message:${parts[0]}`);
-    assert.equal(events[1], 'presence:composing:chat-id');
-    assert.match(events[2], /^wait:/u);
-    assert.equal(events[3], `message:${parts[1]}`);
-    assert.equal(events[4], 'presence:paused:chat-id');
+    let eventIndex = 1;
+    for (let partIndex = 1; partIndex < parts.length; partIndex += 1) {
+        assert.equal(events[eventIndex++], 'presence:composing:chat-id');
+        const waitEvent = events[eventIndex++];
+        assert.match(waitEvent, /^wait:/u);
+        const delayMs = Number(waitEvent.slice('wait:'.length));
+        assert.ok(Number.isInteger(delayMs));
+        assert.ok(delayMs >= 4000 && delayMs <= 6000, `Expected 4-6 seconds, got ${delayMs}ms`);
+        assert.equal(events[eventIndex++], `message:${parts[partIndex]}`);
+    }
+    assert.equal(events[eventIndex], 'presence:paused:chat-id');
 });
 
 test('keeps short automatic replies on the original single-send path', async () => {
