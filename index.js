@@ -651,6 +651,21 @@ async function startQasimDev() {
                 });
                 if (shuttingDown)
                     return;
+                if (isLoggedOut && /\bconflict\b/i.test(disconnectMessage)) {
+                    try {
+                        await credsSavePromise;
+                    }
+                    catch (error) {
+                        printLog('error', `Could not save WhatsApp credentials after session conflict: ${error.message}`);
+                    }
+                    updatePairingState({
+                        status: 'error',
+                        code: null,
+                        message: 'Another bot instance is using this WhatsApp session. Stop the other instance, then restart this bot.'
+                    });
+                    printLog('warning', 'WhatsApp session conflict detected. Preserving the session and backup; automatic reconnect is paused until the other instance is stopped.');
+                    return;
+                }
                 if (isLoggedOut) {
                     try {
                         await credsSavePromise;

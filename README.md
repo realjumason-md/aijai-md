@@ -71,6 +71,12 @@ restart, and it rate-limits pairing requests in the running process. A new
 pairing is only needed after an actual WhatsApp logout or when no valid
 persistent session backup exists.
 
+Run exactly one live service or replica for each WhatsApp session. A
+`401` with `Stream Errored (conflict)` means another active connection is using
+the same session. In that case, the bot preserves its local session and
+encrypted GitHub backup and pauses automatic reconnects. Stop the other bot
+instance before restarting this one.
+
 For a new connection, open the Railway service URL and use the **Connect WhatsApp** form to enter your full number with country code. The pairing code is displayed on that page and is no longer written to Railway logs.
 
 Optional variables for a new connection:
