@@ -3,7 +3,7 @@ import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { AiVisionContext } from '../lib/ai-vision-context.js';
+import { AiVisionContext, isPhotoFollowUp } from '../lib/ai-vision-context.js';
 
 async function createTemporaryContext(t, options = {}) {
     const directory = await mkdtemp(path.join(os.tmpdir(), 'aijai-vision-context-'));
@@ -77,7 +77,7 @@ test('keeps photo context across repeated follow-ups and sends it with the curre
     assert.deepEqual(result.images, [{
         data: 'YWJj',
         mimeType: 'image/jpeg',
-        contextText: 'Earlier saved photo 1 of 1 from this chat.'
+        contextText: 'The most recent saved photo from this chat.'
     }]);
 });
 
@@ -132,4 +132,10 @@ test('does not cache a single image larger than the total storage limit', async 
     assert.equal(await memory.remember('chat-a', photoTurn()), false);
     assert.equal((await memory.attach('chat-a', storedHistory())).attached, false);
     assert.deepEqual(await readdir(path.join(memory.directory, 'photos')), []);
+});
+
+test('only reuses saved photo context for visual follow-up questions', () => {
+    assert.equal(isPhotoFollowUp('Does she look like a man?'), true);
+    assert.equal(isPhotoFollowUp('What about the background?'), true);
+    assert.equal(isPhotoFollowUp('What does tbh mean, what is the full form?'), false);
 });
