@@ -5,6 +5,7 @@ tmp/
 .env
 data/*.json
 !data/.gitkeep
+data/ai-vision-memory/
 *.log
 coverage/
 lib/bin/

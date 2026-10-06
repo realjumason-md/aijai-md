@@ -1,32 +1,53 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 import { AiVisionContext } from '../lib/ai-vision-context.js';
 
-function storedHistory() {
+async function createTemporaryContext(t, options = {}) {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'aijai-vision-context-'));
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    return new AiVisionContext({
+        directory: path.join(directory, 'cache'),
+        ...options
+    });
+}
+
+function storedHistory(userText = 'What do you see in this photo?', assistantText = 'I see a person outside near trees.') {
     return [
-        { role: 'user', content: 'What do you see in this photo?' },
-        { role: 'assistant', content: 'I see a person outside near trees.' },
+        { role: 'user', content: userText },
+        { role: 'assistant', content: assistantText },
         { role: 'user', content: 'What about the background?' },
         { role: 'assistant', content: 'There are plants behind them.' }
     ];
 }
 
-function photoTurn() {
+function photoTurn({
+    data = 'YWJj',
+    userText = 'What do you see in this photo?',
+    assistantText = 'I see a person outside near trees.'
+} = {}) {
     return {
-        images: [{ data: 'YWJj', mimeType: 'image/jpeg' }],
-        userText: 'What do you see in this photo?',
-        assistantText: 'I see a person outside near trees.'
+        images: [{ data, mimeType: 'image/jpeg' }],
+        userText,
+        assistantText
     };
 }
 
-test('reattaches a recent photo to its original turn for follow-up questions', () => {
-    const memory = new AiVisionContext();
+test('saves the image outside the repo and restores it onto its original turn after restart', async (t) => {
+    const memory = await createTemporaryContext(t);
     const history = storedHistory();
 
-    assert.equal(memory.remember('chat-a', photoTurn(), 1_000), true);
-    const result = memory.attach('chat-a', history, 2_000);
+    assert.equal(await memory.remember('chat-a', photoTurn()), true);
+    const index = await readFile(memory.indexPath, 'utf8');
+    assert.equal(index.includes('chat-a'), false);
+
+    const restartedMemory = new AiVisionContext({ directory: memory.directory });
+    const result = await restartedMemory.attach('chat-a', history);
 
     assert.equal(result.attached, true);
+    assert.deepEqual(result.images, []);
     assert.deepEqual(result.history[0].content, [
         { type: 'text', text: 'What do you see in this photo?' },
         {
@@ -38,27 +59,77 @@ test('reattaches a recent photo to its original turn for follow-up questions', (
     assert.equal(history[0].content, 'What do you see in this photo?');
 });
 
-test('keeps photo context isolated, short-lived, and limited to configured follow-ups', () => {
-    const memory = new AiVisionContext({ ttlMs: 100, maxFollowUps: 1 });
-    const history = storedHistory();
-    memory.remember('chat-a', photoTurn(), 1_000);
+test('keeps photo context across repeated follow-ups and sends it with the current question when history is trimmed', async (t) => {
+    const memory = await createTemporaryContext(t);
+    await memory.remember('chat-a', photoTurn());
 
-    assert.equal(memory.attach('chat-b', history, 1_010).attached, false);
-    assert.equal(memory.attach('chat-a', history, 1_010).attached, true);
-    memory.consume('chat-a');
-    assert.equal(memory.attach('chat-a', history, 1_020).attached, false);
+    assert.equal((await memory.attach('chat-b', storedHistory())).attached, false);
+    for (let index = 0; index < 7; index += 1)
+        assert.equal((await memory.attach('chat-a', storedHistory())).attached, true);
 
-    memory.remember('chat-a', photoTurn(), 2_000);
-    assert.equal(memory.attach('chat-a', history, 2_100).attached, false);
+    const trimmedHistory = [
+        { role: 'user', content: 'What about the photo I sent earlier?' },
+        { role: 'assistant', content: 'Which part do you mean?' }
+    ];
+    const result = await memory.attach('chat-a', trimmedHistory);
+    assert.equal(result.attached, true);
+    assert.deepEqual(result.history, trimmedHistory);
+    assert.deepEqual(result.images, [{
+        data: 'YWJj',
+        mimeType: 'image/jpeg',
+        contextText: 'Earlier saved photo 1 of 1 from this chat.'
+    }]);
 });
 
-test('does not keep images above the configured memory limit', () => {
-    const memory = new AiVisionContext({ maxImageBytes: 2 });
-    const oversizedPhoto = {
-        ...photoTurn(),
-        images: [{ data: 'YWJj', mimeType: 'image/jpeg' }]
-    };
+test('retains multiple photos from one chat until the shared storage budget evicts them', async (t) => {
+    const memory = await createTemporaryContext(t, { maxStorageBytes: 20 });
+    const history = [
+        { role: 'user', content: 'First photo' },
+        { role: 'assistant', content: 'First description' },
+        { role: 'user', content: 'Second photo' },
+        { role: 'assistant', content: 'Second description' }
+    ];
 
-    assert.equal(memory.remember('chat-a', oversizedPhoto, 1_000), false);
-    assert.equal(memory.attach('chat-a', storedHistory(), 1_010).attached, false);
+    await memory.remember('chat-a', photoTurn({
+        data: 'YQ==',
+        userText: 'First photo',
+        assistantText: 'First description'
+    }));
+    await memory.remember('chat-a', photoTurn({
+        data: 'Yg==',
+        userText: 'Second photo',
+        assistantText: 'Second description'
+    }));
+
+    const result = await memory.attach('chat-a', history);
+    assert.equal(result.attached, true);
+    assert.deepEqual(result.images, []);
+    assert.match(result.history[0].content[1].image_url.url, /base64,YQ==$/);
+    assert.match(result.history[2].content[1].image_url.url, /base64,Yg==$/);
+});
+
+test('evicts the oldest saved photo when the total storage budget fills', async (t) => {
+    const memory = await createTemporaryContext(t, { maxStorageBytes: 6 });
+    await memory.remember('chat-old', photoTurn({ data: 'YWJjZA==' }));
+    await memory.remember('chat-new', photoTurn({ data: 'ZWZn' }));
+
+    assert.equal((await memory.attach('chat-old', storedHistory())).attached, false);
+    const latest = await memory.attach('chat-new', storedHistory());
+    assert.equal(latest.attached, true);
+    assert.deepEqual(latest.history[0].content[1], {
+        type: 'image_url',
+        image_url: { url: 'data:image/jpeg;base64,ZWZn' }
+    });
+
+    const imageFiles = await readdir(path.join(memory.directory, 'photos'));
+    assert.equal(imageFiles.length, 1);
+    assert.equal((await stat(path.join(memory.directory, 'photos', imageFiles[0]))).size, 3);
+});
+
+test('does not cache a single image larger than the total storage limit', async (t) => {
+    const memory = await createTemporaryContext(t, { maxStorageBytes: 2 });
+
+    assert.equal(await memory.remember('chat-a', photoTurn()), false);
+    assert.equal((await memory.attach('chat-a', storedHistory())).attached, false);
+    assert.deepEqual(await readdir(path.join(memory.directory, 'photos')), []);
 });
