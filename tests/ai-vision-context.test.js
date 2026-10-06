@@ -7,11 +7,15 @@ import { AiVisionContext, isPhotoFollowUp } from '../lib/ai-vision-context.js';
 
 async function createTemporaryContext(t, options = {}) {
     const directory = await mkdtemp(path.join(os.tmpdir(), 'aijai-vision-context-'));
-    t.after(() => rm(directory, { recursive: true, force: true }));
-    return new AiVisionContext({
+    const memory = new AiVisionContext({
         directory: path.join(directory, 'cache'),
         ...options
     });
+    t.after(async () => {
+        memory.close();
+        await rm(directory, { recursive: true, force: true });
+    });
+    return memory;
 }
 
 function storedHistory(userText = 'What do you see in this photo?', assistantText = 'I see a person outside near trees.') {
@@ -44,6 +48,7 @@ test('saves the image outside the repo and restores it onto its original turn af
     assert.equal(index.includes('chat-a'), false);
 
     const restartedMemory = new AiVisionContext({ directory: memory.directory });
+    t.after(() => restartedMemory.close());
     const result = await restartedMemory.attach('chat-a', history);
 
     assert.equal(result.attached, true);
@@ -106,6 +111,78 @@ test('retains multiple photos from one chat until the shared storage budget evic
     assert.deepEqual(result.images, []);
     assert.match(result.history[0].content[1].image_url.url, /base64,YQ==$/);
     assert.match(result.history[2].content[1].image_url.url, /base64,Yg==$/);
+});
+
+test('expires each saved photo 20 minutes after it was saved', async (t) => {
+    const photoTtlMs = 20 * 60 * 1000;
+    let now = 1_000;
+    const memory = await createTemporaryContext(t, {
+        photoTtlMs,
+        now: () => now
+    });
+    const history = [
+        { role: 'user', content: 'First photo' },
+        { role: 'assistant', content: 'First description' },
+        { role: 'user', content: 'Second photo' },
+        { role: 'assistant', content: 'Second description' }
+    ];
+
+    await memory.remember('chat-a', photoTurn({
+        data: 'YQ==',
+        userText: 'First photo',
+        assistantText: 'First description'
+    }));
+    now += photoTtlMs - 1;
+    await memory.remember('chat-a', photoTurn({
+        data: 'Yg==',
+        userText: 'Second photo',
+        assistantText: 'Second description'
+    }));
+    now += 1;
+
+    const result = await memory.attach('chat-a', history);
+    assert.equal(result.attached, true);
+    assert.equal(result.history[0].content, 'First photo');
+    assert.match(result.history[2].content[1].image_url.url, /base64,Yg==$/);
+
+    const photoFiles = await readdir(path.join(memory.directory, 'photos'));
+    assert.equal(photoFiles.length, 1);
+    assert.deepEqual(JSON.parse(await readFile(memory.indexPath, 'utf8')).entries.length, 1);
+});
+
+test('automatically removes saved photos when their expiration timer fires', async (t) => {
+    const memory = await createTemporaryContext(t, { photoTtlMs: 30 });
+    assert.equal(memory.photoTtlMs, 30);
+    await memory.remember('chat-a', photoTurn());
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    assert.deepEqual(await readdir(path.join(memory.directory, 'photos')), []);
+    assert.deepEqual(JSON.parse(await readFile(memory.indexPath, 'utf8')).entries, []);
+});
+
+test('removes photos that expired while the bot was stopped when loading the cache', async (t) => {
+    const photoTtlMs = 20 * 60 * 1000;
+    let now = 1_000;
+    const memory = await createTemporaryContext(t, {
+        photoTtlMs,
+        now: () => now
+    });
+    await memory.remember('chat-a', photoTurn());
+    memory.close();
+    now += photoTtlMs;
+
+    const restartedMemory = new AiVisionContext({
+        directory: memory.directory,
+        photoTtlMs,
+        now: () => now
+    });
+    t.after(() => restartedMemory.close());
+
+    const result = await restartedMemory.attach('chat-a', storedHistory());
+    assert.equal(result.attached, false);
+    assert.deepEqual(await readdir(path.join(memory.directory, 'photos')), []);
+    assert.deepEqual(JSON.parse(await readFile(memory.indexPath, 'utf8')).entries, []);
 });
 
 test('evicts the oldest saved photo when the total storage budget fills', async (t) => {
