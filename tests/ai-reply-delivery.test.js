@@ -56,8 +56,9 @@ test('prefers sentence boundaries when splitting', () => {
     assert.equal(`${parts[0]} ${parts[1]}`, reply);
 });
 
-test('waits 5 seconds before showing typing on an incoming reply', async () => {
+test('waits 8 seconds before showing typing on an incoming reply', async () => {
     const events = [];
+    let fakeNow = 0;
     const finishHumanReply = startHumanReplyDelay(
         {
             sendPresenceUpdate: async (state, jid) => events.push(`presence:${state}:${jid}`)
@@ -66,7 +67,9 @@ test('waits 5 seconds before showing typing on an incoming reply', async () => {
         {
             wait: async (ms) => {
                 events.push(`wait:${ms}`);
+                fakeNow += ms;
             },
+            now: () => fakeNow,
             random: () => 0
         }
     );
@@ -74,9 +77,15 @@ test('waits 5 seconds before showing typing on an incoming reply', async () => {
     assert.deepEqual(events, []);
     await finishHumanReply();
     assert.deepEqual(events, [
-        'wait:5000',
+        'wait:8000',
         'presence:composing:chat-id',
-        'wait:3000',
+        'wait:2500',
+        'presence:composing:chat-id',
+        'wait:2500',
+        'presence:composing:chat-id',
+        'wait:2500',
+        'presence:composing:chat-id',
+        'wait:500',
         'presence:paused:chat-id'
     ]);
 });

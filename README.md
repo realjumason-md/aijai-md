@@ -106,6 +106,20 @@ This downloads the current plugins from the configured GitHub branch, writes the
 
 The command is owner-only. `PLUGIN_REPO` and `PLUGIN_BRANCH` can override the default source.
 
+## Public TikTok video links
+
+The bot automatically detects TikTok video links sent in chat and replies with
+the video when the post can be fetched without signing in. It uses the
+`yt-dlp` executable installed by the Docker image; no TikTok API key, account,
+or browser cookies are configured. Private, removed, login-gated, or
+temporarily blocked posts are reported as unavailable instead of stopping the
+bot. Downloads are limited to one at a time, 32 MiB, and 90 seconds.
+
+The Docker image downloads a pinned `yt-dlp` release and verifies its SHA-256
+checksum during build. TikTok can change its public-page responses, so some
+public links may still fail; the bot handles those errors without interrupting
+WhatsApp message processing.
+
 ## Optional runtime settings
 
 - `MEMORY_RESTART_MB` enables an emergency self-restart threshold. It is disabled by default so normal plugin reloads do not take the bot offline.

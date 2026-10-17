@@ -4,12 +4,26 @@ FROM node:24-bookworm-slim
     && apt-get install -y --no-install-recommends \
       bash \
       ca-certificates \
+      curl \
       ffmpeg \
       g++ \
       libvips-dev \
       make \
       python3 \
     && rm -rf /var/lib/apt/lists/*
+
+    ARG YT_DLP_VERSION=2026.08.19
+    RUN set -eux; \
+      base_url="https://github.com/yt-dlp/yt-dlp/releases/download/${YT_DLP_VERSION}"; \
+      curl --fail --location --silent --show-error --retry 3 \
+        "${base_url}/yt-dlp" -o /tmp/yt-dlp; \
+      curl --fail --location --silent --show-error --retry 3 \
+        "${base_url}/SHA2-256SUMS" -o /tmp/SHA2-256SUMS; \
+      cd /tmp; \
+      grep -E '([* ]|  )yt-dlp$' SHA2-256SUMS | sha256sum --check --strict -; \
+      install -m 0755 /tmp/yt-dlp /usr/local/bin/yt-dlp; \
+      /usr/local/bin/yt-dlp --version; \
+      rm -f /tmp/yt-dlp /tmp/SHA2-256SUMS
 
     WORKDIR /root/aijai-md
 
